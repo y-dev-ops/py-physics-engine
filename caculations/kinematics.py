@@ -33,15 +33,12 @@ def build_spatial_grid(shapes):
     grid = {}
 
     for shape in shapes:
-        cell_x = int(shape.x // CELL_SIZE)
-        cell_y = int(shape.y // CELL_SIZE)
-
-        key = (cell_x, cell_y)
-
-        if key not in grid:
-            grid[key] = []
-
-        grid[key].append(shape)
+        x1, y1, x2, y2 = shape.get_aabb()
+        # Add shape to every cell it overlaps
+        for cx in range(int(x1 // CELL_SIZE), int(x2 // CELL_SIZE) + 1):
+            for cy in range(int(y1 // CELL_SIZE), int(y2 // CELL_SIZE) + 1):
+                key = (cx, cy)
+                grid.setdefault(key, []).append(shape)
 
     return grid
 

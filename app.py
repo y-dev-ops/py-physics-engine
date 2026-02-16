@@ -6,7 +6,7 @@ from scripts.follow_the_mouse import *
 #from scripts import follow_the_mouse
 
 
-screen_title = "title"
+screen_title = "phy engine"
 
 
         
@@ -15,7 +15,7 @@ states_rb = []
 
 def main(): 
     print('test')
-    screen = Screen("Physics Test", fps=60)
+    screen = Screen(screen_title, fps=60)
     circle = screen.add_circle(150, 100, 50, mass=5, isStatic=False)
     rect_3 = screen.add_rectangle(500, 100, 120, 80,mass=5, isStatic=False)
     rect_4 = screen.add_rectangle(400, 400, 600, 120, color='green')
