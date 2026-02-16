@@ -24,6 +24,8 @@ def integrate(shape, delta):
 def cal_gravity(shape, g=9.8):
     if shape.rb.isStatic:
         return
+    if (not shape.rb.gravity):
+        return
     #F=mg
     shape.rb.apply_force([0, shape.rb.mass * g])
 
@@ -127,6 +129,14 @@ def resolve_collision(a, b):
     if a.rb.isStatic and b.rb.isStatic:
         return
 
+    if a.rb.ingore_static and b.rb.isStatic:
+        return
+
+    if b.rb.ingore_static and a.rb.isStatic:
+        return
+
+
+
     if not aabb_collision(a, b):
         return
 
@@ -144,6 +154,33 @@ def resolve_collision(a, b):
         impulse = -(1 + restitution) * v_normal
         impulse /= (1/a.rb.mass + (1/b.rb.mass if b.rb.mass > 0 else 0))
 
+        # friction # code stolen from GPT btw, I aint einstein
+        tx = -ny
+        ty = nx
+        v_rel_t = (a.rb.velocity[0] - b.rb.velocity[0]) * tx + \
+                (a.rb.velocity[1] - b.rb.velocity[1]) * ty
+        mu = (a.rb.friction + b.rb.friction) / 2  # Average friction
+        f_impulse = -v_rel_t / (1/a.rb.mass + 1/b.rb.mass)
+        f_impulse = max(-impulse * mu, min(f_impulse, impulse * mu))
+
+        # 4. Apply Friction Impulse
+        if not a.rb.isStatic:
+            a.rb.velocity[0] += (f_impulse * tx) / a.rb.mass
+            a.rb.velocity[1] += (f_impulse * ty) / a.rb.mass
+
+        if not b.rb.isStatic:
+            b.rb.velocity[0] -= (f_impulse * tx) / b.rb.mass
+            b.rb.velocity[1] -= (f_impulse * ty) / b.rb.mass
+        
+        static_threshold = 0.5 
+        # If the remaining tangent velocity is very small, kill it entirely
+        if abs(v_rel_t) < static_threshold:
+            # This "locks" the object to the surface
+            if not a.rb.isStatic:
+                # Subtract the remaining tangent velocity to hit zero
+                a.rb.velocity[0] -= (v_rel_t * tx) 
+                a.rb.velocity[1] -= (v_rel_t * ty)
+
         # 4) apply impulse to velocities
         if not a.rb.isStatic:
             a.rb.velocity[0] += (impulse * nx) / a.rb.mass
@@ -154,7 +191,7 @@ def resolve_collision(a, b):
             b.rb.velocity[1] -= (impulse * ny) / b.rb.mass
 
     # 5) positional correction to avoid sinking (optional, small fraction)
-    percent = 0.2  # 20% of penetration
+    percent = 0.2 # 20% of penetration
     overlap_x, overlap_y = get_overlap(a, b)
     if overlap_x < overlap_y:
         if not a.rb.isStatic:
@@ -166,7 +203,6 @@ def resolve_collision(a, b):
             a.position(a.x, a.y + ny * overlap_y * percent)
         if not b.rb.isStatic:
             b.position(b.x, b.y - ny * overlap_y * percent)
-
 
 
 

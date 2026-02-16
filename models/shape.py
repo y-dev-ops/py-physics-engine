@@ -2,7 +2,7 @@ from models.rigidbody import *
 
 class Shape:
     """Base class for all shapes"""
-    def __init__(self, x, y, color="black", myscreen=None, isStatic=True):
+    def __init__(self, x, y, color="black", myscreen=None, isStatic=True, gravity=True):
         self.x = x
         self.y = y
         self.color = color
@@ -58,10 +58,10 @@ class Shape:
     
 # you can add your own shapes here
 class Circle(Shape):
-    def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True):
+    def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True, gravity=True):
         super().__init__(x, y, color)
         self.radius = radius
-        self.rb = rigidbody(mass=mass, isStatic=isStatic)  # custom properties dictionary
+        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity)  # custom properties dictionary
         self.canvas_id = None  # ID of the drawn object on the canvas
         self.screen = myscreen
         self.type = "circle"
@@ -78,11 +78,11 @@ class Circle(Shape):
         )
 
 class Rectangle(Shape):
-    def __init__(self, x, y, width, height, color="blue", mass = 0, myscreen=None, isStatic=True):
+    def __init__(self, x, y, width, height, color="blue", mass = 0, myscreen=None, isStatic=True, gravity=True):
         super().__init__(x, y, color)
         self.width = width
         self.height = height
-        self.rb = rigidbody(mass=mass, isStatic=isStatic)
+        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity)
         self.canvas_id = None
         self.screen = myscreen
         self.type = "rectangle"

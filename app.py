@@ -24,7 +24,7 @@ def inspector(screen): # here you add every Shape you need in your screen
     rect_4 = screen.add_rectangle(400, 400, 600, 120, color='green')
 
     # rect object
-    rect = screen.add_rectangle(50, 300, 120, 80)
+    rect = screen.add_rectangle(50, 300, 120, 80, gravity=False, mass=1, isStatic=False)
     rect.add_script(follow_the_mouse(rect))
 
     # rect_2 object
