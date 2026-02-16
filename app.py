@@ -14,6 +14,7 @@ screen_title = "title"
 states_rb = []
 
 def main(): 
+    print('test')
     screen = Screen("Physics Test", fps=60)
     circle = screen.add_circle(150, 100, 50, mass=5, isStatic=False)
     rect_3 = screen.add_rectangle(500, 100, 120, 80,mass=5, isStatic=False)
