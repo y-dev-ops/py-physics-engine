@@ -13,7 +13,7 @@ class Screen:
         
         self.shapes = []  # keep track of shapes
         self.fps = fps
-        self.dt = 0.02  # fixed timestep, its should be 1/fps = 1/60, but i want to be 0.02
+        self.dt = 1/fps
         self.last_time = time.time()
         self.accumulator = 0
 
@@ -36,17 +36,21 @@ class Screen:
         self.shapes.append(rect)
         return rect
 
+    def add_button(self, text, command):
+        button = tk.Button(self.root, text=text, command=command, background='red', width=2, height=2)
+        button.place(relx=1.0, rely=0.0, anchor='ne')
+        return button
+
+
     def show(self):
         self._run_loop()   # start the custom loop
         self.root.mainloop()
 
 
     def register_update(self, func):
-        """Register a function to be called every frame"""
         self.update_callbacks.append(func)
 
     def register_fixed_update(self, func):
-        """Register a function to be called at fixed timestep"""
         self.fixed_update_callbacks.append(func)
 
     
@@ -61,7 +65,6 @@ class Screen:
 
         # Call Fixed_Update callbacks (fixed delta)
         for func in self.fixed_update_callbacks:
-            #func(self.dt)
             self.accumulator += delta
             while self.accumulator >= self.dt:
                 func(self.dt)

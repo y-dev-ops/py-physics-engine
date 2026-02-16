@@ -9,19 +9,25 @@ class Shape:
         self.screen = myscreen
         self.scripts = []
         self.scripts_update = []
+        self.scripts_fixed_update = []
         self.type = "shape"
 
 
     def add_script(self, script):
         if (script.hasUpdate):
             self.scripts_update.append(script)
+        if (script.hasFUpdate):
+            self.scripts_fixed_update.append(script)
 
         self.scripts.append(script)
         
-    def update(self, delta):
-        if (len(self.scripts_update) > 0):
-            for script in self.scripts_update:
+    def Update(self, delta):
+        for script in self.scripts_update:
                 script.update(delta)
+
+    def FUpdate(self, delta):
+        for script in self.scripts_fixed_update:
+                script.fixed_update(delta)
 
 
     def remove_script(script):
@@ -50,7 +56,7 @@ class Shape:
             )
 
     
-
+# you can add your own shapes here
 class Circle(Shape):
     def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True):
         super().__init__(x, y, color)

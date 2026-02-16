@@ -1,65 +1,77 @@
-#here we manage and Load Everything
 from basic.screen import *
 from caculations.kinematics import *
-#scripts:
+
+
+#scripts: (here you add your scripts from '/scripts' to import them)
 from scripts.follow_the_mouse import *
-#from scripts import follow_the_mouse
 
-
+#--- Settings ---
 screen_title = "phy engine"
+is_fullscreen = True
+fps = 60
 
+def inspector(screen): # here you add every Shape you need in your screen
+    # Exit Button
+    button = screen.add_button(text="X", command=screen.root.destroy) # for exit button
 
-        
-
-states_rb = []
-
-def main(): 
-    print('test')
-    screen = Screen(screen_title, fps=60)
+    # circle object
     circle = screen.add_circle(150, 100, 50, mass=5, isStatic=False)
+
+    # rect_3 object
     rect_3 = screen.add_rectangle(500, 100, 120, 80,mass=5, isStatic=False)
+    
+    # rect_4 object
     rect_4 = screen.add_rectangle(400, 400, 600, 120, color='green')
+
+    # rect object
     rect = screen.add_rectangle(50, 300, 120, 80)
-    rect_2 = screen.add_rectangle(0, 300, 400, 80)
-
-    #for shape in screen.shapes:
-    #    if (shape.rb.mass > 0):
-    #        states_rb.append(shape)
-            #print(shape)
-
-    #ftm = follow_the_mouse(rect)
-
     rect.add_script(follow_the_mouse(rect))
 
+    # rect_2 object
+    rect_2 = screen.add_rectangle(0, 300, 400, 80)
 
 
+
+    # Note: isStatic is True by def
+
+
+
+
+def main(): # main, handling everthing on this project
+
+
+    # --- Manage Screen ---
+    screen = Screen(screen_title, fps=fps)
+    screen.root.attributes('-fullscreen', is_fullscreen) # fullscreen mode
+    
+
+    # --- activate inspector ---
+    inspector(screen) #passing current screen to inspector
+
+    # --- main updates ---
     def update(delta):
-        #circle.position(circle.x+1, circle.y-1) # we got update, what we need is to start using kinimatics to cal
-        
-        
         pass
-
-
-            
 
     def fixed_update(delta):
         physics_engine(delta, screen.shapes)
-        pass
 
+    screen.register_update(update) # main update
+    screen.register_fixed_update(fixed_update) # main FUpdate
 
-    for ss in screen.shapes:
-        screen.register_update(ss.update)
+    # --- activate objects update function ---
+    for ss in screen.shapes: #foreach shapes update(inside there scripts)
 
+        if (len(ss.scripts_update) > 0):
+            screen.register_update(ss.Update)
 
-
-    screen.register_update(update)
-    screen.register_fixed_update(fixed_update)
-
-
-    screen.show()
-
+        if (len(ss.scripts_fixed_update) > 0):
+            screen.register_fixed_update(ss.FUpdate)
 
 
 
-    
-main()
+    screen.show() #display screen
+
+
+
+
+main() # calling main func to activate everything
