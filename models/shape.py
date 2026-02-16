@@ -2,7 +2,7 @@ from models.rigidbody import *
 
 class Shape:
     """Base class for all shapes"""
-    def __init__(self, x, y, color="black", myscreen=None, isStatic=True, gravity=True):
+    def __init__(self, x, y, color="black", myscreen=None, isStatic=True, gravity=True, bounciness=0.6):
         self.x = x
         self.y = y
         self.color = color
@@ -47,7 +47,7 @@ class Shape:
                 self.x + self.radius,
                 self.y + self.radius
             )
-        else:  # rectangle
+        else:  # rectangle or square
             return (
                 self.x,
                 self.y,
@@ -58,13 +58,15 @@ class Shape:
     
 # you can add your own shapes here
 class Circle(Shape):
-    def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True, gravity=True):
+    def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True, gravity=True, bounciness=0.6):
         super().__init__(x, y, color)
         self.radius = radius
-        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity)  # custom properties dictionary
+        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity, bounciness=bounciness)  # custom properties dictionary
         self.canvas_id = None  # ID of the drawn object on the canvas
         self.screen = myscreen
         self.type = "circle"
+        self.width = radius * 2 #to avoid any possible errors
+        self.height = radius * 2 #to avoid any possible errors
     
     def position(self, x, y):
         self.x = x
@@ -78,11 +80,11 @@ class Circle(Shape):
         )
 
 class Rectangle(Shape):
-    def __init__(self, x, y, width, height, color="blue", mass = 0, myscreen=None, isStatic=True, gravity=True):
+    def __init__(self, x, y, width, height, color="blue", mass = 0, myscreen=None, isStatic=True, gravity=True, bounciness=0.6):
         super().__init__(x, y, color)
         self.width = width
         self.height = height
-        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity)
+        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity, bounciness=bounciness)
         self.canvas_id = None
         self.screen = myscreen
         self.type = "rectangle"

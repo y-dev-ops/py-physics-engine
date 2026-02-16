@@ -150,7 +150,7 @@ def resolve_collision(a, b):
 
     # 3) apply impulse only if objects are moving toward each other
     if v_normal < 0:
-        restitution = 0.6  # bounciness
+        restitution = a.rb.bounciness if b.rb.isStatic else b.rb.bounciness # bounciness
         impulse = -(1 + restitution) * v_normal
         impulse /= (1/a.rb.mass + (1/b.rb.mass if b.rb.mass > 0 else 0))
 
