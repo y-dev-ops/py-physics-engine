@@ -1,6 +1,6 @@
 from scripts.template import Template
 
-class follow_the_mouse(Template):
+class follow_the_mouse(Template): # i need to imporve the script template copy to be like mono in UNITY
     def __init__(self, shape):
         self.shape = shape
         print(self.shape, 'added script')
@@ -23,4 +23,4 @@ class follow_the_mouse(Template):
         self.shape.rb.velocity[1] = dy * (smoothing / delta)
 
         #rotate for testing,
-        self.shape.rotation(self.shape.angle + 10)
+        self.shape.rotation(self.shape.angle + 1)

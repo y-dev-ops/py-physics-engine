@@ -39,7 +39,7 @@ def cal_gravity(shape, g=9.8):
 # --- trying to do SAT ----
 
 def get_axes(points):
-    """Get normals for SAT. For Rectangles, we only need 2 axes (width/height)."""
+    #Get normals for SAT. For Rectangles, we only need 2 axes (width/height).
     axes = []
     # Loop only the first 2 edges (enough for a rectangle)
     # If you use non-rect polygons later, change range(2) to range(len(points)//2)
@@ -54,7 +54,7 @@ def get_axes(points):
     return axes
 
 def project(points, axis):
-    """Project points onto axis and return (min, max)."""
+    #Project points onto axis and return (min, max).
     dots = [points[i] * axis[0] + points[i+1] * axis[1] for i in range(0, len(points), 2)]
     return min(dots), max(dots)
 
@@ -89,7 +89,7 @@ def sat_collision(a, b):
     return True, smallest_axis, min_overlap
 
 
-# --- old code---
+# fixed, added rotation and some shit, to do next: add ang vel :(
 
 CELL_SIZE = 100  # pixels
 
@@ -172,7 +172,7 @@ def sat_circle_poly(circle, poly):
     return True, smallest_axis, min_overlap
 
 
-#others
+#other cond
 
 def circle_circle_collision(a, b):
     dx = a.x - b.x
@@ -196,18 +196,21 @@ def check_collision(a, b):
         
     if a.type == "rectangle" and b.type == "circle":
         # SAT returns Normal(Poly -> Circle), which is (A -> B).
-        # This matches what Resolve expects.
-        # DO NOT FLIP.
         return sat_circle_poly(b, a)
 
     return False, (0,0), 0
 
 
 def resolve_collision(a, b, normal, penetration):
+
+    if (a.rb.ingore_static and b.rb.isStatic) or (b.rb.ingore_static and a.rb.isStatic): #just to debug better
+        return
+
+
     nx, ny = normal
 
     # 1. Positional Correction (The Anti-Sinking Shield)
-    # We push them apart INSTANTLY so they don't wait for velocity to update
+    # WE DO CACULATE BEFORE THE SHIT HAPPEN
     percent = 0.5  # Increased from 0.05 to 0.5 (50% correction per frame)
     slop = 0.05    # Tolerance to prevent jitter
     
@@ -258,7 +261,7 @@ def resolve_collision(a, b, normal, penetration):
     
     vt = rel_vel_x * tx + rel_vel_y * ty
     
-    if abs(vt) > 0.001: # Avoid divide by zero
+    if abs(vt) > 0.001: # Avoid divide by zero ;)
         # Friction Coefficient
         mu = math.sqrt(a.rb.friction * b.rb.friction)
         
@@ -290,7 +293,7 @@ def physics_engine(delta, shapes):
         cal_gravity(shape)
         integrate(shape, delta)
         
-        # Damping (Air resistance)
+        # Damping
         shape.rb.velocity[0] *= 0.99
         shape.rb.velocity[1] *= 0.99
 
@@ -321,7 +324,7 @@ def physics_engine(delta, shapes):
 
                     if a.rb.isStatic and b.rb.isStatic: continue
 
-                    collided, normal, penetration = check_collision(a,b)#sat_collision(a, b)
+                    collided, normal, penetration = check_collision(a,b)# check type of col
                     if collided:
                         resolve_collision(a, b, normal, penetration)
 

@@ -1,21 +1,65 @@
 from models.rigidbody import *
 import math
+
+
 class Shape:
-    """Base class for all shapes"""
-    def __init__(self, x, y, color="black", myscreen=None, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
-        self.x = x
-        self.y = y
-        self.color = color
-        self.screen = myscreen
-        self.scripts = []
-        self.scripts_update = []
-        self.scripts_fixed_update = []
-        self.type = "shape"
-        self.rotation_x = 0
-        self.rotation_y = 0
-        self.rotation_z = 0
-        self.rb = rigidbody(isStatic=isStatic)
-        self.rb.position = [x, y]
+    #main dict shape, this is what you can feed the Shape with:
+    def_dict = {
+        'x': 0,
+        'y': 0,
+        'width': 0,
+        'height': 0,
+        'angle': 0,
+        'color': 'pink',
+        'rb': {
+            'gravity': True,
+            'isStatic': False,
+            'ingore_static': False,
+            'bounciness': 0.6,
+            'friction': 0.4,
+            'static_friction': 0.6,
+            'mass': 1000,
+        },
+        'scripts': [],
+        'scripts_update': [],
+        'scripts_fixed_update': [],
+        'canvas_id': None,
+    }
+    def unpack(self, _dict):
+        for key, value in _dict.items():
+            if (key == 'rb'):
+                self.rb = rigidbody(**value)
+            else:
+                setattr(self, key, value)
+
+
+    def __init__(self, _dict):
+        #print(_dict)
+        data = self.def_dict.copy()  # make a copy of default dict
+        data.update(_dict) 
+        #print(data)
+        self.unpack(data)
+
+
+    def rotation(self, angle_deg):
+        self.angle = angle_deg
+
+        cx, cy = self.x, self.y
+        a = math.radians(self.angle)
+        c, s = math.cos(a), math.sin(a)
+
+        out = []
+
+        for i in range(0, len(self.base_points), 2):
+            x = self.base_points[i] - cx
+            y = self.base_points[i+1] - cy
+
+            xr = x * c - y * s + cx
+            yr = x * s + y * c + cy
+
+            out.extend([xr, yr])
+
+        return out
 
 
     def add_script(self, script):
@@ -38,78 +82,24 @@ class Shape:
     def remove_script(script):
         self.scripts.remove(script)
 
-
-
     def position(self, x, y):
         self.x = x
         self.y = y
 
-    def rotate_points(points, angle_deg, pivot):
-        cx, cy = pivot
-        a = math.radians(angle_deg)
-        c, s = math.cos(a), math.sin(a)
-        out = []
-        for i in range(0, len(points), 2):
-            x, y = points[i] - cx, points[i+1] - cy
-            xr, yr = x*c - y*s + cx, x*s + y*c + cy
-            out.extend([xr, yr])
-        return out
-
-    def rotation(self, z):
-        self.rotation_z = z
-        points = [self.x,
-                self.y,
-                self.x + self.width,
-                self.y + self.height]
-        pivot = [(self.x + self.width)/2, (self.y + self.height)/2]
-
-
-        
-        angle_deg = self.rotation_z
-        cx, cy = pivot
-        a = math.radians(angle_deg)
-        c, s = math.cos(a), math.sin(a)
-        out = []
-        for i in range(0, len(points), 2):
-            x, y = points[i] - cx, points[i+1] - cy
-            xr, yr = x*c - y*s + cx, x*s + y*c + cy
-            out.extend([xr, yr])
-        return out
-
-
-
-
-    # usage: canvas.coords(poly_id, *rotate_points(orig_points, angle, (cx, cy)))
-
     def get_aabb(self):
-        if hasattr(self, "radius"):  # circle
-            return (
-                self.x - self.radius,
-                self.y - self.radius,
-                self.x + self.radius,
-                self.y + self.radius
-            )
-        else:  # rectangle or square
-            return (
+        return (
                 self.x,
                 self.y,
                 self.x + self.width,
                 self.y + self.height
-            )
+                )
 
     
 # you can add your own shapes here
 class Circle(Shape):
-    def __init__(self, x, y, radius, color="red", mass = 0, myscreen=None, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
-        super().__init__(x, y, color) #x,y of circle is center
-        self.radius = radius
-        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)  # custom properties dictionary
-        self.canvas_id = None  # ID of the drawn object on the canvas
-        self.screen = myscreen
+    def __init__(self, _dict):
+        super().__init__(_dict)
         self.type = "circle"
-        self.width = radius * 2 #to avoid any possible errors
-        self.height = radius * 2 #to avoid any possible errors
-        self.angle = 0
         self.base_points = [
             self.x - self.radius, self.y,
             self.y - self.radius, self.x,
@@ -118,27 +108,14 @@ class Circle(Shape):
         ]
         self.points = self.base_points.copy()
 
-    def rotation(self, angle_deg):
-        self.angle = angle_deg
+    def get_aabb(self):
+        return(
+                self.x - self.radius,
+                self.y - self.radius,
+                self.x + self.radius,
+                self.y + self.radius
+        )
 
-        cx, cy = self.x, self.y
-        a = math.radians(self.angle)
-        c, s = math.cos(a), math.sin(a)
-
-        out = []
-
-        for i in range(0, len(self.base_points), 2):
-            x = self.base_points[i] - cx
-            y = self.base_points[i+1] - cy
-
-            xr = x * c - y * s + cx
-            yr = x * s + y * c + cy
-
-            out.extend([xr, yr])
-
-        self.points = out
-        self.screen.canvas.coords(self.canvas_id, *self.points[0::2])
-    
     def position(self, x, y):
         self.x = x
         self.y = y
@@ -148,36 +125,22 @@ class Circle(Shape):
             self.x + self.radius, self.y,
             self.y + self.radius, self.x
         ]
-
-        self.rotation(self.angle)
-
-
-
-
+        self.points = self.rotation(self.angle)
+        self.screen.canvas.coords(self.canvas_id, *self.points[0::2])
 
 class Rectangle(Shape):
-    def __init__(self, x, y, width, height, color="blue", mass = 0, myscreen=None, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
-        super().__init__(x, y, color)
-        self.width = width
-        self.height = height
-        self.rb = rigidbody(mass=mass, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)
-        self.canvas_id = None
-        self.screen = myscreen
+    def __init__(self, _dict):
+        super().__init__(_dict)
         self.type = "rectangle"
-        #self.rb.position = [x, y]  # center
-        self.angle = 0
-        hw, hh = width / 2, height / 2
-        #self.center_x = x + hw
-        #self.center_y = y + hh
-        self.x = x + hw
-        self.y = y + hh
+        hw, hh = self.width / 2, self.height / 2
+        self.x += hw
+        self.y += hh
         self.base_points = [
             self.x - hw, self.y - hh,
             self.x + hw, self.y - hh,
             self.x + hw, self.y + hh,
             self.x - hw, self.y + hh
         ]
-
         self.points = self.base_points.copy()
 
     def get_aabb(self):
@@ -185,26 +148,6 @@ class Rectangle(Shape):
         ys = self.points[1::2]
         return min(xs), min(ys), max(xs), max(ys)
 
-    def rotation(self, angle_deg):
-        self.angle = angle_deg
-
-        cx, cy = self.x, self.y
-        a = math.radians(self.angle)
-        c, s = math.cos(a), math.sin(a)
-
-        out = []
-
-        for i in range(0, len(self.base_points), 2):
-            x = self.base_points[i] - cx
-            y = self.base_points[i+1] - cy
-
-            xr = x * c - y * s + cx
-            yr = x * s + y * c + cy
-
-            out.extend([xr, yr])
-
-        self.points = out
-        self.screen.canvas.coords(self.canvas_id, *self.points)
 
     def position(self, cx, cy):
         self.x = cx
@@ -220,7 +163,9 @@ class Rectangle(Shape):
             self.x - hw, self.y + hh
         ]
 
-        self.rotation(self.angle)
+        
+        self.points = self.rotation(self.angle)
+        self.screen.canvas.coords(self.canvas_id, *self.points)
 
 
     

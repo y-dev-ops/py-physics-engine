@@ -20,27 +20,24 @@ class Screen:
         self.update_callbacks = []
         self.fixed_update_callbacks = []
 
-    def add_circle(self, x, y, radius, color="red", mass=1000, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
-        circle = Circle(x, y, radius, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)
+    def add_circle(self,_dict):
+        _dict['screen'] = self
+        circle = Circle(_dict)
         circle.canvas_id = self.canvas.create_oval(
-            x - radius, y - radius, x + radius, y + radius, fill=color
+            circle.x - circle.radius, circle.y - circle.radius, circle.x + circle.radius, circle.y + circle.radius, fill=circle.color
         )
         self.shapes.append(circle)
         return circle
 
-    def add_rectangle(self, x, y, width, height, color="blue", mass=1000, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
-        rect = Rectangle(x, y, width, height, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)
-        #rect.canvas_id = self.canvas.create_rectangle(
-        #    x, y, x + width, y + height, fill=color
-        #)
-        # Define all 4 points of the rectangle
-
-
+    def add_rectangle(self, _dict):
+        _dict['screen'] = self
+        rect = Rectangle(_dict)
         rect.canvas_id = self.canvas.create_polygon(
-            rect.points, fill=color
+            rect.points, fill=rect.color
         )
         self.shapes.append(rect)
         return rect
+
 
     def add_button(self, text, command):
         button = tk.Button(self.root, text=text, command=command, background='red', width=2, height=2)
@@ -53,7 +50,7 @@ class Screen:
         self.root.mainloop()
 
 
-    def register_update(self, func):
+    def register_update(self, func): #why are you reading my code >:(   just trust bro aint hacking you
         self.update_callbacks.append(func)
 
     def register_fixed_update(self, func):
