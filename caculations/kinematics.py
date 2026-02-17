@@ -12,6 +12,10 @@ def integrate(shape, delta):
     # Semi-implicit Euler (stable)
     shape.rb.velocity[0] += ax * delta
     shape.rb.velocity[1] += ay * delta
+    
+    #shape.center_x += shape.rb.velocity[0] * delta
+    #shape.center_y += shape.rb.velocity[1] * delta
+
 
     new_x = shape.x + shape.rb.velocity[0] * delta
     new_y = shape.y + shape.rb.velocity[1] * delta

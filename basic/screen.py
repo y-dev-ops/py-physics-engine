@@ -20,18 +20,24 @@ class Screen:
         self.update_callbacks = []
         self.fixed_update_callbacks = []
 
-    def add_circle(self, x, y, radius, color="red", mass=1000, isStatic=True, gravity=True, bounciness=0.6):
-        circle = Circle(x, y, radius, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness)
+    def add_circle(self, x, y, radius, color="red", mass=1000, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
+        circle = Circle(x, y, radius, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)
         circle.canvas_id = self.canvas.create_oval(
             x - radius, y - radius, x + radius, y + radius, fill=color
         )
         self.shapes.append(circle)
         return circle
 
-    def add_rectangle(self, x, y, width, height, color="blue", mass=1000, isStatic=True, gravity=True, bounciness=0.6):
-        rect = Rectangle(x, y, width, height, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness)
-        rect.canvas_id = self.canvas.create_rectangle(
-            x, y, x + width, y + height, fill=color
+    def add_rectangle(self, x, y, width, height, color="blue", mass=1000, isStatic=True, gravity=True, bounciness=0.6, friction=0.4, static_friction=0.6):
+        rect = Rectangle(x, y, width, height, color, mass=mass, myscreen=self, isStatic=isStatic, gravity=gravity, bounciness=bounciness, friction=friction, static_friction=static_friction)
+        #rect.canvas_id = self.canvas.create_rectangle(
+        #    x, y, x + width, y + height, fill=color
+        #)
+        # Define all 4 points of the rectangle
+
+
+        rect.canvas_id = self.canvas.create_polygon(
+            rect.points, fill=color
         )
         self.shapes.append(rect)
         return rect

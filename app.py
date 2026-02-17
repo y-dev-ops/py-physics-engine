@@ -15,16 +15,16 @@ def inspector(screen): # here you add every Shape you need in your screen
     button = screen.add_button(text="X", command=screen.root.destroy) # for exit button
 
     # circle object
-    circle = screen.add_circle(150, 100, 50, mass=3, isStatic=False, bounciness=.8)
+    circle = screen.add_circle(150, 100, 50, mass=3, isStatic=False, bounciness=.8, friction=0.3)
 
     # rect_3 object
-    rect_3 = screen.add_rectangle(500, 100, 120, 80,mass=5, isStatic=False, bounciness=.1)
+    rect_3 = screen.add_rectangle(500, 100, 120, 80,mass=5, isStatic=False, bounciness=.1, friction=0.7, static_friction=0.8)
     
     # rect_4 object
     rect_4 = screen.add_rectangle(400, 400, 600, 120, color='green')
 
     # rect object
-    rect = screen.add_rectangle(50, 300, 120, 80, gravity=False, mass=1, isStatic=False)
+    rect = screen.add_rectangle(50, 500, 120, 80,gravity=False, mass=1, isStatic=False)
     rect.add_script(follow_the_mouse(rect))
 
     # rect_2 object
