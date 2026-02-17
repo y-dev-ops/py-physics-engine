@@ -33,6 +33,64 @@ def cal_gravity(shape, g=9.8):
     #F=mg
     shape.rb.apply_force([0, shape.rb.mass * g])
 
+
+
+
+# --- trying to do SAT ----
+
+def get_axes(points):
+    """Get normals for SAT. For Rectangles, we only need 2 axes (width/height)."""
+    axes = []
+    # Loop only the first 2 edges (enough for a rectangle)
+    # If you use non-rect polygons later, change range(2) to range(len(points)//2)
+    for i in range(0, 4, 2): 
+        x1, y1 = points[i], points[i+1]
+        x2, y2 = points[(i+2) % len(points)], points[(i+3) % len(points)]
+        dx, dy = x2 - x1, y2 - y1
+        # Normal is (-dy, dx)
+        length = math.hypot(dx, dy)
+        if length > 0:
+            axes.append((-dy / length, dx / length))
+    return axes
+
+def project(points, axis):
+    """Project points onto axis and return (min, max)."""
+    dots = [points[i] * axis[0] + points[i+1] * axis[1] for i in range(0, len(points), 2)]
+    return min(dots), max(dots)
+
+def sat_collision(a, b):
+    # Get axes from both shapes
+    axes = get_axes(a.points) + get_axes(b.points)
+    
+    min_overlap = float('inf')
+    smallest_axis = (0, 0)
+
+    for axis in axes:
+        min_a, max_a = project(a.points, axis)
+        min_b, max_b = project(b.points, axis)
+
+        # Check for gap
+        if max_a < min_b or max_b < min_a:
+            return False, (0,0), 0
+
+        # Calculate overlap
+        overlap = min(max_a, max_b) - max(min_a, min_b)
+        
+        if overlap < min_overlap:
+            min_overlap = overlap
+            smallest_axis = axis
+
+    # Ensure normal points from A to B
+    dx = b.x - a.x
+    dy = b.y - a.y
+    if (dx * smallest_axis[0] + dy * smallest_axis[1]) < 0:
+        smallest_axis = (-smallest_axis[0], -smallest_axis[1])
+
+    return True, smallest_axis, min_overlap
+
+
+# --- old code---
+
 CELL_SIZE = 100  # pixels
 
 def build_spatial_grid(shapes):
@@ -48,36 +106,73 @@ def build_spatial_grid(shapes):
 
     return grid
 
-def rect_rect_collision(a, b):
-    ax1, ay1, ax2, ay2 = a.get_aabb()
-    bx1, by1, bx2, by2 = b.get_aabb()
-    return ax1 < bx2 and ax2 > bx1 and ay1 < by2 and ay2 > by1
 
-def rect_rect_normal(a, b):
-    overlap_x, overlap_y = get_overlap(a, b)
-    dx = a.x - b.x
-    dy = a.y - b.y
-    if overlap_x < overlap_y:
-        return (1 if dx > 0 else -1, 0)
+#Circle-Polygon
+def sat_circle_poly(circle, poly):
+    # 1. Edge Normals (standard SAT)
+    axes = get_axes(poly.points)
+    
+    # 2. Closest Vertex Axis
+    # Find the vertex closest to the circle center
+    closest_v = None
+    min_dist_sq = float('inf')
+    
+    for i in range(0, len(poly.points), 2):
+        vx, vy = poly.points[i], poly.points[i+1]
+        d_sq = (circle.x - vx)**2 + (circle.y - vy)**2
+        if d_sq < min_dist_sq:
+            min_dist_sq = d_sq
+            closest_v = (vx, vy)
+            
+    # Add axis from Vertex -> Circle
+    # Handle the edge case where center is exactly on vertex
+    dx, dy = circle.x - closest_v[0], circle.y - closest_v[1]
+    dist = math.hypot(dx, dy)
+    
+    if dist > 0.0001:
+        axes.append((dx/dist, dy/dist))
     else:
-        return (0, 1 if dy > 0 else -1)
+        # If center is exactly on vertex, pick an arbitrary axis (e.g., vertex normal)
+        # or just skip to avoid Div/0 error.
+        pass
 
-def circle_rect_collision(circle, rect):
-    closest_x = max(rect.x, min(circle.x, rect.x + rect.width))
-    closest_y = max(rect.y, min(circle.y, rect.y + rect.height))
-    dx = circle.x - closest_x
-    dy = circle.y - closest_y
-    return dx*dx + dy*dy < circle.radius**2
+    # 3. SAT Loop
+    min_overlap = float('inf')
+    smallest_axis = (0, 0)
 
-def circle_rect_normal(circle, rect):
-    closest_x = max(rect.x, min(circle.x, rect.x + rect.width))
-    closest_y = max(rect.y, min(circle.y, rect.y + rect.height))
-    dx = circle.x - closest_x
-    dy = circle.y - closest_y
-    dist = math.sqrt(dx*dx + dy*dy)
-    if dist == 0:
-        return 0, -1
-    return dx / dist, dy / dist
+    for axis in axes:
+        # Project Poly
+        min_p, max_p = project(poly.points, axis)
+        
+        # Project Circle
+        # Project the CENTER, then add/sub radius
+        proj_c = circle.x * axis[0] + circle.y * axis[1]
+        min_c = proj_c - circle.radius
+        max_c = proj_c + circle.radius
+
+        # GAP CHECK
+        if max_p < min_c or max_c < min_p:
+            return False, (0,0), 0
+        
+        # Calculate Overlap
+        overlap = min(max_p, max_c) - max(min_p, min_c)
+        
+        if overlap < min_overlap:
+            min_overlap = overlap
+            smallest_axis = axis
+
+    # 4. Enforce Normal Direction: Poly -> Circle
+    # We use the vector from Poly Center to Circle Center
+    center_dx = circle.x - poly.x
+    center_dy = circle.y - poly.y
+    
+    if (center_dx * smallest_axis[0] + center_dy * smallest_axis[1]) < 0:
+        smallest_axis = (-smallest_axis[0], -smallest_axis[1])
+
+    return True, smallest_axis, min_overlap
+
+
+#others
 
 def circle_circle_collision(a, b):
     dx = a.x - b.x
@@ -85,172 +180,149 @@ def circle_circle_collision(a, b):
     r = a.radius + b.radius
     return dx*dx + dy*dy < r*r
 
-
-def get_collision_normal(a, b):
+def check_collision(a, b):
     if a.type == "rectangle" and b.type == "rectangle":
-        return rect_rect_normal(a, b)
-    elif a.type == "circle" and b.type == "rectangle":
-        return circle_rect_normal(a, b)
-    elif a.type == "rectangle" and b.type == "circle":
-        nx, ny = circle_rect_normal(b, a)
-        return -nx, -ny  # invert normal since we swapped
-    elif a.type == "circle" and b.type == "circle":
-        dx = a.x - b.x
-        dy = a.y - b.y
-        dist = math.sqrt(dx*dx + dy*dy)
-        if dist == 0:
-            return 0, -1
-        return dx / dist, dy / dist
-    else:
-        return 0, 0
-
-def aabb_collision(a, b):
-    # Type-dispatch collision
-    if a.type == "rectangle" and b.type == "rectangle":
-        return rect_rect_collision(a, b)
-    elif a.type == "circle" and b.type == "rectangle":
-        return circle_rect_collision(a, b)
-    elif a.type == "rectangle" and b.type == "circle":
-        return circle_rect_collision(b, a)  # swap
-    elif a.type == "circle" and b.type == "circle":
+        return sat_collision(a, b)
+    
+    if a.type == "circle" and b.type == "circle":
         return circle_circle_collision(a, b)
-    else:
-        return False  # unknown types
-
-
-
-def get_overlap(a, b):
-    ax1, ay1, ax2, ay2 = a.get_aabb()
-    bx1, by1, bx2, by2 = b.get_aabb()
-
-    overlap_x = min(ax2, bx2) - max(ax1, bx1)
-    overlap_y = min(ay2, by2) - max(ay1, by1)
-
-    return overlap_x, overlap_y
-
-
-def resolve_collision(a, b):
-    if a.rb.isStatic and b.rb.isStatic:
-        return
-
-    if a.rb.ingore_static and b.rb.isStatic:
-        return
-
-    if b.rb.ingore_static and a.rb.isStatic:
-        return
-
-
-
-    if not aabb_collision(a, b):
-        return
-
-    # 1) get collision normal
-    nx, ny = get_collision_normal(a, b)
-
-    # 2) relative velocity along normal
-    v_rel = (a.rb.velocity[0] - (b.rb.velocity[0] if b.rb.mass > 0 else 0),
-             a.rb.velocity[1] - (b.rb.velocity[1] if b.rb.mass > 0 else 0))
-    v_normal = v_rel[0]*nx + v_rel[1]*ny
-
-    # 3) apply impulse only if objects are moving toward each other
-    if v_normal < 0:
-        restitution = a.rb.bounciness if b.rb.isStatic else b.rb.bounciness # bounciness
-        impulse = -(1 + restitution) * v_normal
-        impulse /= (1/a.rb.mass + (1/b.rb.mass if b.rb.mass > 0 else 0))
-
-        # friction # code stolen from GPT btw, I aint einstein
-        tx = -ny
-        ty = nx
-        v_rel_t = (a.rb.velocity[0] - b.rb.velocity[0]) * tx + \
-                (a.rb.velocity[1] - b.rb.velocity[1]) * ty
-        mu = (a.rb.friction + b.rb.friction) / 2  # Average friction
-        f_impulse = -v_rel_t / (1/a.rb.mass + 1/b.rb.mass)
-        f_impulse = max(-impulse * mu, min(f_impulse, impulse * mu))
-
-        # 4. Apply Friction Impulse
-        if not a.rb.isStatic:
-            a.rb.velocity[0] += (f_impulse * tx) / a.rb.mass
-            a.rb.velocity[1] += (f_impulse * ty) / a.rb.mass
-
-        if not b.rb.isStatic:
-            b.rb.velocity[0] -= (f_impulse * tx) / b.rb.mass
-            b.rb.velocity[1] -= (f_impulse * ty) / b.rb.mass
+    
+    if a.type == "circle" and b.type == "rectangle":
+        # SAT returns Normal(Poly -> Circle), which is (B -> A).
+        # Resolve expects (A -> B).
+        # We MUST FLIP the normal.
+        collided, normal, penetration = sat_circle_poly(a, b)
+        return collided, (-normal[0], -normal[1]), penetration
         
-        static_threshold = 0.5 
-        # If the remaining tangent velocity is very small, kill it entirely
-        if abs(v_rel_t) < static_threshold:
-            # This "locks" the object to the surface
-            if not a.rb.isStatic:
-                # Subtract the remaining tangent velocity to hit zero
-                a.rb.velocity[0] -= (v_rel_t * tx) 
-                a.rb.velocity[1] -= (v_rel_t * ty)
+    if a.type == "rectangle" and b.type == "circle":
+        # SAT returns Normal(Poly -> Circle), which is (A -> B).
+        # This matches what Resolve expects.
+        # DO NOT FLIP.
+        return sat_circle_poly(b, a)
 
-        # 4) apply impulse to velocities
+    return False, (0,0), 0
+
+
+def resolve_collision(a, b, normal, penetration):
+    nx, ny = normal
+
+    # 1. Positional Correction (The Anti-Sinking Shield)
+    # We push them apart INSTANTLY so they don't wait for velocity to update
+    percent = 0.5  # Increased from 0.05 to 0.5 (50% correction per frame)
+    slop = 0.05    # Tolerance to prevent jitter
+    
+    correction_mag = max(penetration - slop, 0.0) / (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0)) * percent
+    
+    cx = correction_mag * nx
+    cy = correction_mag * ny
+
+    if not a.rb.isStatic:
+        a.position(a.x - cx / a.rb.mass, a.y - cy / a.rb.mass)
+    if not b.rb.isStatic:
+        b.position(b.x + cx / b.rb.mass, b.y + cy / b.rb.mass)
+
+    # 2. Velocity Impulse (The Bounce)
+    rel_vel_x = b.rb.velocity[0] - a.rb.velocity[0]
+    rel_vel_y = b.rb.velocity[1] - a.rb.velocity[1]
+    
+    vel_along_normal = rel_vel_x * nx + rel_vel_y * ny
+
+    # Do not resolve if velocities are separating
+    if vel_along_normal > 0:
+        return
+
+    # Elasticity (Bounciness)
+    e = min(a.rb.bounciness, b.rb.bounciness)
+    
+    j = -(1 + e) * vel_along_normal
+    j /= (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0))
+
+    impulse_x = j * nx
+    impulse_y = j * ny
+
+    if not a.rb.isStatic:
+        a.rb.velocity[0] -= impulse_x / a.rb.mass
+        a.rb.velocity[1] -= impulse_y / a.rb.mass
+    if not b.rb.isStatic:
+        b.rb.velocity[0] += impulse_x / b.rb.mass
+        b.rb.velocity[1] += impulse_y / b.rb.mass
+
+    # 3. Friction (The Slide)
+    # Recalculate relative velocity after bounce
+    rel_vel_x = b.rb.velocity[0] - a.rb.velocity[0]
+    rel_vel_y = b.rb.velocity[1] - a.rb.velocity[1]
+    
+    # Tangent vector (perpendicular to normal)
+    tx = -ny
+    ty = nx
+    
+    vt = rel_vel_x * tx + rel_vel_y * ty
+    
+    if abs(vt) > 0.001: # Avoid divide by zero
+        # Friction Coefficient
+        mu = math.sqrt(a.rb.friction * b.rb.friction)
+        
+        friction_j = -vt / (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0))
+        
+        # Clamp friction (Coulomb's Law)
+        # Cannot be stronger than normal impulse * friction coefficient
+        max_friction = abs(j) * mu
+        friction_j = max(-max_friction, min(max_friction, friction_j))
+
+        f_imp_x = friction_j * tx
+        f_imp_y = friction_j * ty
+
         if not a.rb.isStatic:
-            a.rb.velocity[0] += (impulse * nx) / a.rb.mass
-            a.rb.velocity[1] += (impulse * ny) / a.rb.mass
-
+            a.rb.velocity[0] -= f_imp_x / a.rb.mass
+            a.rb.velocity[1] -= f_imp_y / a.rb.mass
         if not b.rb.isStatic:
-            b.rb.velocity[0] -= (impulse * nx) / b.rb.mass
-            b.rb.velocity[1] -= (impulse * ny) / b.rb.mass
-
-    # 5) positional correction to avoid sinking (optional, small fraction)
-    percent = 0.2 # 20% of penetration
-    overlap_x, overlap_y = get_overlap(a, b)
-    if overlap_x < overlap_y:
-        if not a.rb.isStatic:
-            a.position(a.x + nx * overlap_x * percent, a.y)
-        if not b.rb.isStatic:
-            b.position(b.x - nx * overlap_x * percent, b.y)
-    else:
-        if not a.rb.isStatic:
-            a.position(a.x, a.y + ny * overlap_y * percent)
-        if not b.rb.isStatic:
-            b.position(b.x, b.y - ny * overlap_y * percent)
+            b.rb.velocity[0] += f_imp_x / b.rb.mass
+            b.rb.velocity[1] += f_imp_y / b.rb.mass
 
 
 
-def check_floor(shape, floor_y):
-    bottom = shape.y + shape.radius
 
-    if bottom > floor_y:
-        shape.y = floor_y - shape.radius
-        shape.rb.velocity[1] *= -0.8
+
 
 def physics_engine(delta, shapes):
+    # 1. Apply Forces & Move
     for shape in shapes:
-        # 1) Apply gravity
         cal_gravity(shape)
-
-        # 2) Integrate
         integrate(shape, delta)
+        
+        # Damping (Air resistance)
+        shape.rb.velocity[0] *= 0.99
+        shape.rb.velocity[1] *= 0.99
 
-        # 3) damping
-        shape.rb.velocity[0] *= 0.999
-        shape.rb.velocity[1] *= 0.999
+    # 2. Iterative Collision Solver (Run this 4 to 8 times per frame)
+    # More iterations = Stiffer/More solid objects. Less = Mushy.
+    solver_iterations = 4 
+    
+    for _ in range(solver_iterations):
+        # Optimization: Re-build grid only once if objects don't move fast, 
+        # but for accuracy we iterate the pairs.
+        
+        # Note: If you have many objects, move build_spatial_grid outside this loop
+        # and just iterate the pairs. For < 50 objects, rebuilding is fine.
+        grid = build_spatial_grid(shapes)
+        
+        processed_pairs = set() # To avoid double checking A-B and B-A
 
-    # 4) Broad phase
-    grid = build_spatial_grid(shapes)
+        for cell in grid.values():
+            # Check objects in same cell
+            for i in range(len(cell)):
+                for j in range(i + 1, len(cell)):
+                    a, b = cell[i], cell[j]
+                    
+                    # Create unique ID for pair to avoid duplicates in neighbor checks
+                    pair_id = tuple(sorted((id(a), id(b))))
+                    if pair_id in processed_pairs: continue
+                    processed_pairs.add(pair_id)
 
-        # 5) Narrow phase
-    for (cell_x, cell_y), cell in grid.items():
+                    if a.rb.isStatic and b.rb.isStatic: continue
 
-        # check this cell and 8 neighbors
-        for nx in (-1, 0, 1):
-            for ny in (-1, 0, 1):
-                neighbor_key = (cell_x + nx, cell_y + ny)
-
-                if neighbor_key not in grid:
-                    continue
-
-                neighbor_cell = grid[neighbor_key]
-
-                for a in cell:
-                    for b in neighbor_cell:
-                        if a is b:
-                            continue
-
-                        if aabb_collision(a, b):
-                            resolve_collision(a, b)
+                    collided, normal, penetration = check_collision(a,b)#sat_collision(a, b)
+                    if collided:
+                        resolve_collision(a, b, normal, penetration)
 
 
