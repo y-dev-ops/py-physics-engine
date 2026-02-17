@@ -1,7 +1,7 @@
 from scripts.template import Template
 class drag(Template): # i need to imporve the script template copy to be like mono in UNITY
     def __init__(self): #
-        self.hasUpdate = False
+        self.hasUpdate = True
         self.hasFUpdate = False
 
     def update_pos(self, x, y):
@@ -25,8 +25,13 @@ class drag(Template): # i need to imporve the script template copy to be like mo
 
         return None
 
-    def on_mouse_down(self, event):
-        x, y = event.x, event.y
+    def get_mouse_p(self):
+        mouse_x = self.shape.screen.root.winfo_pointerx() - self.shape.screen.root.winfo_rootx()
+        mouse_y = self.shape.screen.root.winfo_pointery() - self.shape.screen.root.winfo_rooty()
+        return [mouse_x, mouse_y]
+
+    def mouse_down(self):
+        x, y = self.get_mouse_p()
 
         shape = self.get_shape_at(x, y)
         
@@ -34,14 +39,14 @@ class drag(Template): # i need to imporve the script template copy to be like mo
             self.dragged_shape = shape
             self.dragged_shape.rb.gravity = False
 
-    def on_mouse_drag(self, event):
+    def mouse_drag(self):
         if not self.dragged_shape:
             return
 
-        x, y = event.x, event.y
+        x, y = self.get_mouse_p()
         self.update_pos(x,y)
 
-    def on_mouse_up(self, event):
+    def mouse_up(self):
         if self.dragged_shape:
             #print("Released:", self.dragged_shape)
             self.dragged_shape.rb.gravity = True
@@ -52,3 +57,12 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         print(self.shape, 'added script')
         self.dragged_shape = None
         self.strength = 10
+
+    def update(self, delta):
+        if (self.shape.screen.input.getKeyDown('mouse1')):
+            self.mouse_down()
+        if (self.shape.screen.input.getKeyHold('mouse1')):
+            self.mouse_drag()
+        if (self.shape.screen.input.getKeyUp('mouse1')):
+            self.mouse_up()
+        

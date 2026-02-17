@@ -1,34 +1,10 @@
 import tkinter as tk
 from models.shape import *
 import time
+import basic.input as inp
 
 
 class Screen:
-    
-    # mouse input handler:
-    def _on_mouse_down(self, event):
-        for shape in self.shapes:
-            for script in shape.scripts:
-                if hasattr(script, "on_mouse_down"):
-                    script.on_mouse_down(event)
-
-    def _on_mouse_drag(self, event):
-        for shape in self.shapes:
-            for script in shape.scripts:
-                if hasattr(script, "on_mouse_drag"):
-                    script.on_mouse_drag(event)
-
-    def _on_mouse_up(self, event):
-        for shape in self.shapes:
-            for script in shape.scripts:
-                if hasattr(script, "on_mouse_up"):
-                    script.on_mouse_up(event)
-
-
-
-
-
-
     def __init__(self, title="My App", width=400, height=300, fps=60):
         self.root = tk.Tk()
         self.root.title(title)
@@ -45,11 +21,21 @@ class Screen:
         self.update_callbacks = []
         self.fixed_update_callbacks = []
 
-        self.canvas.bind("<Button-1>", self._on_mouse_down)
-        self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
-        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
+        self.canvas.focus_set()
+        #input manager
+        self.input = inp.Input(self)
 
+        # 1. Key Press (Default)
+        self.canvas.bind("<KeyPress>", lambda e: self.input.handle_key_manager(e))
 
+        # 2. Key Release
+        self.canvas.bind("<KeyRelease>", lambda e: self.input.handle_key_manager(e, isUp=True))
+
+        # 3. Mouse Down
+        self.canvas.bind("<Button>", lambda e: self.input.handle_key_manager(e, isMouse=True))
+
+        # 4. Mouse Up
+        self.canvas.bind("<ButtonRelease>", lambda e: self.input.handle_key_manager(e, isUp=True, isMouse=True))
 
 
     def add_circle(self,_dict):
@@ -105,7 +91,7 @@ class Screen:
                 func(self.dt)
                 self.accumulator -= self.dt
 
-
+        self.input.clear_frame_inputs()
 
         # Schedule next frame
         self.root.after(int(1000 / self.fps), self._run_loop)
