@@ -20,6 +20,7 @@ class Shape:
             'static_friction': 0.6,
             'mass': 1000,
         },
+        'type': '',
         'scripts': [],
         'scripts_update': [],
         'scripts_fixed_update': [],
@@ -32,6 +33,34 @@ class Shape:
             else:
                 setattr(self, key, value)
 
+        if (len(self.scripts) > 0):
+            for script in self.scripts:
+                script.parent(self)
+                if (script.hasUpdate):
+                    self.scripts_update.append(script)
+                if (script.hasFUpdate):
+                    self.scripts_fixed_update.append(script)
+
+    def calculate_inertia(self, shape):
+        if shape.rb.isStatic:
+            shape.rb.inertia = 0
+            shape.rb.inv_inertia = 0
+            return
+
+        m = shape.rb.mass
+        
+        # Formula for Box Inertia: (1/12) * m * (w^2 + h^2)
+        if shape.type == "rectangle":
+            shape.rb.inertia = (1.0 / 12.0) * m * (shape.width**2 + shape.height**2)
+        
+        # Formula for Circle Inertia: (1/2) * m * r^2
+        elif shape.type == "circle":
+            shape.rb.inertia = 0.5 * m * (shape.radius**2)
+
+        # Cache the inverse for faster math later
+        print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
+        shape.rb.inv_inertia = 1.0 / shape.rb.inertia if shape.rb.inertia > 0 else 0
+    
 
     def __init__(self, _dict):
         #print(_dict)
@@ -39,6 +68,7 @@ class Shape:
         data.update(_dict) 
         #print(data)
         self.unpack(data)
+        self.calculate_inertia(self)
 
 
     def rotation(self, angle_deg):
@@ -98,8 +128,8 @@ class Shape:
 # you can add your own shapes here
 class Circle(Shape):
     def __init__(self, _dict):
+        _dict['type'] = 'circle'
         super().__init__(_dict)
-        self.type = "circle"
         self.base_points = [
             self.x - self.radius, self.y,
             self.y - self.radius, self.x,
@@ -130,8 +160,8 @@ class Circle(Shape):
 
 class Rectangle(Shape):
     def __init__(self, _dict):
+        _dict['type'] = 'rectangle'
         super().__init__(_dict)
-        self.type = "rectangle"
         hw, hh = self.width / 2, self.height / 2
         self.x += hw
         self.y += hh
@@ -166,15 +196,3 @@ class Rectangle(Shape):
         
         self.points = self.rotation(self.angle)
         self.screen.canvas.coords(self.canvas_id, *self.points)
-
-
-    
-
-
-
-
-
-
-
-
-

@@ -4,6 +4,31 @@ import time
 
 
 class Screen:
+    
+    # mouse input handler:
+    def _on_mouse_down(self, event):
+        for shape in self.shapes:
+            for script in shape.scripts:
+                if hasattr(script, "on_mouse_down"):
+                    script.on_mouse_down(event)
+
+    def _on_mouse_drag(self, event):
+        for shape in self.shapes:
+            for script in shape.scripts:
+                if hasattr(script, "on_mouse_drag"):
+                    script.on_mouse_drag(event)
+
+    def _on_mouse_up(self, event):
+        for shape in self.shapes:
+            for script in shape.scripts:
+                if hasattr(script, "on_mouse_up"):
+                    script.on_mouse_up(event)
+
+
+
+
+
+
     def __init__(self, title="My App", width=400, height=300, fps=60):
         self.root = tk.Tk()
         self.root.title(title)
@@ -19,6 +44,13 @@ class Screen:
 
         self.update_callbacks = []
         self.fixed_update_callbacks = []
+
+        self.canvas.bind("<Button-1>", self._on_mouse_down)
+        self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
+
+
+
 
     def add_circle(self,_dict):
         _dict['screen'] = self

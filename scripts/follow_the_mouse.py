@@ -1,11 +1,12 @@
 from scripts.template import Template
 
 class follow_the_mouse(Template): # i need to imporve the script template copy to be like mono in UNITY
-    def __init__(self, shape):
-        self.shape = shape
-        print(self.shape, 'added script')
+    def __init__(self): #
         self.hasUpdate = True
         self.hasFUpdate = False
+
+    def start(self):
+        print(self.shape, 'added script')
         self.shape.rb.ingore_static = True
 
     def update(self, delta): # to avoid def between update and fixed update, we will make it smooth tracking, and we want it to ingore static objects
@@ -23,4 +24,4 @@ class follow_the_mouse(Template): # i need to imporve the script template copy t
         self.shape.rb.velocity[1] = dy * (smoothing / delta)
 
         #rotate for testing,
-        self.shape.rotation(self.shape.angle + 1)
+        #self.shape.rotation(self.shape.angle + 1)

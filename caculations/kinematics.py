@@ -5,25 +5,41 @@ def integrate(shape, delta):
     if shape.rb.isStatic:
         return
 
-    # a = F / m
+    # 1. Linear Movement (Existing)
     ax = shape.rb.force[0] * pixels_to_meter / shape.rb.mass
     ay = shape.rb.force[1] * pixels_to_meter / shape.rb.mass
-
-    # Semi-implicit Euler (stable)
+    
     shape.rb.velocity[0] += ax * delta
     shape.rb.velocity[1] += ay * delta
+
+    # DAMPING (The "Motor" Fix)
+    # 0.98 means it loses 2% of its spin every frame
+    shape.rb.velocity[0] *= 0.99
+    shape.rb.velocity[1] *= 0.99
+    shape.rb.angular_velocity *= 0.95
+
     
-    #shape.center_x += shape.rb.velocity[0] * delta
-    #shape.center_y += shape.rb.velocity[1] * delta
-
-
     new_x = shape.x + shape.rb.velocity[0] * delta
     new_y = shape.y + shape.rb.velocity[1] * delta
-
     shape.position(new_x, new_y)
 
-    # reset force
+    # 2. Angular Movement (NEW)
+    # Angular Accel = Torque / Inertia
+    alpha = shape.rb.torque * shape.rb.inv_inertia
+    shape.rb.angular_velocity += alpha * delta
+
+    # Update Angle (Convert Radians to Degrees for your Shape class)
+    # Your Shape uses degrees, but physics uses radians.
+    angle_change_radians = shape.rb.angular_velocity * delta
+
+    shape.angle += math.degrees(angle_change_radians)
+
+    # Apply Rotation
+    shape.rotation(shape.angle)
+
+    # Reset Forces
     shape.rb.force = [0,0]
+    shape.rb.torque = 0
 
 def cal_gravity(shape, g=9.8):
     if shape.rb.isStatic:
@@ -201,21 +217,99 @@ def check_collision(a, b):
     return False, (0,0), 0
 
 
+def cross_product_2d(v1, v2):
+    return v1[0] * v2[1] - v1[1] * v2[0]
+
 def resolve_collision(a, b, normal, penetration):
-
-    if (a.rb.ingore_static and b.rb.isStatic) or (b.rb.ingore_static and a.rb.isStatic): #just to debug better
+    if (a.rb.ingore_static and b.rb.isStatic) or (b.rb.ingore_static and a.rb.isStatic):
         return
-
 
     nx, ny = normal
 
-    # 1. Positional Correction (The Anti-Sinking Shield)
-    # WE DO CACULATE BEFORE THE SHIT HAPPEN
-    percent = 0.5  # Increased from 0.05 to 0.5 (50% correction per frame)
-    slop = 0.05    # Tolerance to prevent jitter
+    # --- 1. Find Contact Point (Approximation) ---
+    # We need the point where force is applied to calculate torque (lever arm).
+    # Simple method: The point on the surface of A closest to B.
     
-    correction_mag = max(penetration - slop, 0.0) / (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0)) * percent
+    # Vector from A to B
+    # Note: This works best if A or B is a circle. 
+    # For Rect-Rect, this is a rough approximation but often "good enough" for simple games.
     
+    contact_x = a.x + nx * (penetration/2) # Roughly halfway? 
+    contact_y = a.y + ny * (penetration/2)
+    
+    # Better Circle estimation:
+    if a.type == "circle":
+        contact_x = a.x + nx * a.radius
+        contact_y = a.y + ny * a.radius
+    elif b.type == "circle":
+        # Normal points A->B, so flip for B's surface
+        contact_x = b.x - nx * b.radius
+        contact_y = b.y - ny * b.radius
+
+    # rA and rB are vectors from Center of Mass to Contact Point
+    ra_x = contact_x - a.x
+    ra_y = contact_y - a.y
+    rb_x = contact_x - b.x
+    rb_y = contact_y - b.y
+
+    # --- 2. Calculate Relative Velocity (Including Rotation) ---
+    # Velocity at contact point = Linear Vel + Angular Vel * Radius (Cross product)
+    # Vp = V + w x r
+    
+    vap_x = a.rb.velocity[0] - a.rb.angular_velocity * ra_y
+    vap_y = a.rb.velocity[1] + a.rb.angular_velocity * ra_x
+    
+    vbp_x = b.rb.velocity[0] - b.rb.angular_velocity * rb_y
+    vbp_y = b.rb.velocity[1] + b.rb.angular_velocity * rb_x
+
+    rel_vel_x = vbp_x - vap_x
+    rel_vel_y = vbp_y - vap_y
+    
+    vel_along_normal = rel_vel_x * nx + rel_vel_y * ny
+
+    if vel_along_normal > 0:
+        return
+
+    # --- 3. Calculate Rotational Impulse Scalar (j) ---
+    e = min(a.rb.bounciness, b.rb.bounciness)
+    
+    # Rotational terms: (r x n)^2 / I
+    ra_cross_n = cross_product_2d((ra_x, ra_y), normal)
+    rb_cross_n = cross_product_2d((rb_x, rb_y), normal)
+    
+    inv_mass_sum = (a.rb.inv_inertia * ra_cross_n * ra_cross_n) + \
+                   (b.rb.inv_inertia * rb_cross_n * rb_cross_n) + \
+                   (1/a.rb.mass if not a.rb.isStatic else 0) + \
+                   (1/b.rb.mass if not b.rb.isStatic else 0)
+
+    j = -(1 + e) * vel_along_normal
+    j /= inv_mass_sum
+
+    impulse_x = j * nx
+    impulse_y = j * ny
+
+    # --- 4. Apply Impulse (Linear + Angular) ---
+    if not a.rb.isStatic:
+        # Linear
+        a.rb.velocity[0] -= impulse_x / a.rb.mass
+        a.rb.velocity[1] -= impulse_y / a.rb.mass
+        # Angular: Torque = r x F
+        # Angular Vel += (r x Impulse) / I
+        impulse_torque = cross_product_2d((ra_x, ra_y), (impulse_x, impulse_y))
+        a.rb.angular_velocity -= impulse_torque * a.rb.inv_inertia
+
+    if not b.rb.isStatic:
+        b.rb.velocity[0] += impulse_x / b.rb.mass
+        b.rb.velocity[1] += impulse_y / b.rb.mass
+        impulse_torque = cross_product_2d((rb_x, rb_y), (impulse_x, impulse_y))
+        b.rb.angular_velocity += impulse_torque * b.rb.inv_inertia
+
+
+    # --- 5. Positional Correction (Anti-Sinking) ---
+    # (Same as before, rotation doesn't change this much)
+    percent = 0.5
+    slop = 0.05
+    correction_mag = max(penetration - slop, 0.0) / ((1/a.rb.mass if not a.rb.isStatic else 0) + (1/b.rb.mass if not b.rb.isStatic else 0)) * percent
     cx = correction_mag * nx
     cy = correction_mag * ny
 
@@ -223,64 +317,6 @@ def resolve_collision(a, b, normal, penetration):
         a.position(a.x - cx / a.rb.mass, a.y - cy / a.rb.mass)
     if not b.rb.isStatic:
         b.position(b.x + cx / b.rb.mass, b.y + cy / b.rb.mass)
-
-    # 2. Velocity Impulse (The Bounce)
-    rel_vel_x = b.rb.velocity[0] - a.rb.velocity[0]
-    rel_vel_y = b.rb.velocity[1] - a.rb.velocity[1]
-    
-    vel_along_normal = rel_vel_x * nx + rel_vel_y * ny
-
-    # Do not resolve if velocities are separating
-    if vel_along_normal > 0:
-        return
-
-    # Elasticity (Bounciness)
-    e = min(a.rb.bounciness, b.rb.bounciness)
-    
-    j = -(1 + e) * vel_along_normal
-    j /= (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0))
-
-    impulse_x = j * nx
-    impulse_y = j * ny
-
-    if not a.rb.isStatic:
-        a.rb.velocity[0] -= impulse_x / a.rb.mass
-        a.rb.velocity[1] -= impulse_y / a.rb.mass
-    if not b.rb.isStatic:
-        b.rb.velocity[0] += impulse_x / b.rb.mass
-        b.rb.velocity[1] += impulse_y / b.rb.mass
-
-    # 3. Friction (The Slide)
-    # Recalculate relative velocity after bounce
-    rel_vel_x = b.rb.velocity[0] - a.rb.velocity[0]
-    rel_vel_y = b.rb.velocity[1] - a.rb.velocity[1]
-    
-    # Tangent vector (perpendicular to normal)
-    tx = -ny
-    ty = nx
-    
-    vt = rel_vel_x * tx + rel_vel_y * ty
-    
-    if abs(vt) > 0.001: # Avoid divide by zero ;)
-        # Friction Coefficient
-        mu = math.sqrt(a.rb.friction * b.rb.friction)
-        
-        friction_j = -vt / (1/a.rb.mass + (1/b.rb.mass if not b.rb.isStatic else 0))
-        
-        # Clamp friction (Coulomb's Law)
-        # Cannot be stronger than normal impulse * friction coefficient
-        max_friction = abs(j) * mu
-        friction_j = max(-max_friction, min(max_friction, friction_j))
-
-        f_imp_x = friction_j * tx
-        f_imp_y = friction_j * ty
-
-        if not a.rb.isStatic:
-            a.rb.velocity[0] -= f_imp_x / a.rb.mass
-            a.rb.velocity[1] -= f_imp_y / a.rb.mass
-        if not b.rb.isStatic:
-            b.rb.velocity[0] += f_imp_x / b.rb.mass
-            b.rb.velocity[1] += f_imp_y / b.rb.mass
 
 
 
@@ -292,10 +328,6 @@ def physics_engine(delta, shapes):
     for shape in shapes:
         cal_gravity(shape)
         integrate(shape, delta)
-        
-        # Damping
-        shape.rb.velocity[0] *= 0.99
-        shape.rb.velocity[1] *= 0.99
 
     # 2. Iterative Collision Solver (Run this 4 to 8 times per frame)
     # More iterations = Stiffer/More solid objects. Less = Mushy.

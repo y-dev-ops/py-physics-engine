@@ -4,6 +4,7 @@ from caculations.kinematics import *
 
 #scripts: (here you add your scripts from '/scripts' to import them)
 from scripts.follow_the_mouse import *
+from scripts.drag import *
 
 
 
@@ -12,21 +13,28 @@ screen_title = "phy engine"
 is_fullscreen = True
 fps = 60
 
-def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True): #here we turn your vars into dict for easy transfer between objects
+def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[]): #here we turn your vars into dict for easy transfer between objects
+    def_material = {
+        'bounciness': 0.6,
+        'friction': 0.4,
+        'static_friction': 0.6,
+    }
+    
     def_dict = { # to do: next add the scripts here, so they applied directly
         'x': position[0],
         'y': position[1],
-        'angle': angle,
+        'angle': angle, #
         'color': color,
         'rb': {
             'gravity': gravity,
             'isStatic': isStatic,
             'ingore_static': ingore_static,
-            'bounciness': 0.6 if material.get('bounciness') == None else material.get('bounciness'),
-            'friction': 0.4 if material.get('friction') == None else material.get('friction'),
-            'static_friction': 0.6 if material.get('static_friction') == None else material.get('static_friction'),
+            'bounciness': def_material['bounciness'] if material.get('bounciness') == None else material.get('bounciness'),
+            'friction': def_material['friction'] if material.get('friction') == None else material.get('friction'),
+            'static_friction': def_material['static_friction'] if material.get('static_friction') == None else material.get('static_friction'),
             'mass': mass,
         },
+        'scripts': scripts,
     }
     if len(size) > 1:
         def_dict['width'] = size[0]
@@ -63,16 +71,34 @@ def inspector(screen): # here you add every Shape you need in your screen
         size=[50],
         material=bouncy_material,
         mass=3,
-        isStatic=False
+        isStatic=False,
+        scripts=[
+            drag()
+        ]
     ))
 
     # rect_3 object
     rect_3 = screen.add_rectangle(pack_var(
-        position=[400, 100],
+        position=[600, 100],
         size=[200, 150],
         material=spongy_material,
         mass=3,
-        isStatic=False
+        isStatic=False,
+        scripts=[
+            drag()
+        ]
+    ))
+
+    # rect_5 object
+    rect_5 = screen.add_rectangle(pack_var(
+        position=[800, 50],
+        size=[50, 150],
+        material=bouncy_material,
+        mass=3,
+        isStatic=False,
+        scripts=[
+            drag()
+        ]
     ))
     
     # rect_4 object
@@ -89,9 +115,12 @@ def inspector(screen): # here you add every Shape you need in your screen
         color='black',
         ingore_static=True,
         isStatic=False,
-        gravity=False
+        gravity=False,
+        scripts=[
+            #follow_the_mouse()
+        ]
     ))
-    rect.add_script(follow_the_mouse(rect))
+    #rect.add_script(follow_the_mouse(rect))
 
     # rect_2 object
     rect_2 = screen.add_rectangle(pack_var(
@@ -99,13 +128,7 @@ def inspector(screen): # here you add every Shape you need in your screen
         size=[400, 80],
         color='pink',
     ))
-
-
-
     # Note: isStatic is True by def
-
-
-
 
 def main(): # main, handling everthing on this project
 
