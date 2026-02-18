@@ -1,5 +1,5 @@
 import math
-
+# ok im lost here, AI helped a lot in here, i guess phy is non-sense to me when I added rotaion
 pixels_to_meter = 100
 def integrate(shape, delta):
     if shape.rb.isStatic:
@@ -215,34 +215,73 @@ def check_collision(a, b):
 def cross_product_2d(v1, v2):
     return v1[0] * v2[1] - v1[1] * v2[0]
 
+def is_point_inside(x, y, shape):
+    if shape.type == "circle":
+        dx = x - shape.x
+        dy = y - shape.y
+        return dx*dx + dy*dy <= shape.radius**2
+    elif shape.type == "rectangle":
+        axes = get_axes(shape.points)
+        for axis in axes:
+            p = x * axis[0] + y * axis[1]
+            min_s, max_s = project(shape.points, axis)
+            # Allow a tiny bit of error
+            if p < min_s - 0.1 or p > max_s + 0.1:
+                return False
+        return True
+    return False
+
 def resolve_collision(a, b, normal, penetration):
     if (a.rb.ingore_static and b.rb.isStatic) or (b.rb.ingore_static and a.rb.isStatic):
         return
 
     nx, ny = normal
 
-    # --- 1. Find a Better Contact Point ---
-    # To tip over, the contact point MUST be at the corner/edge, not the center.
+    # --- 1. Find Contact Point (Manifold Heuristic) ---
     def get_support_point(shape, nx, ny):
         if shape.type == "circle":
             return shape.x + nx * shape.radius, shape.y + ny * shape.radius
-        # For rectangles, find the vertex furthest in the direction of the normal
-        best_point = (shape.points[0], shape.points[1])
+        
+        # Find max depth
         max_dist = -float('inf')
         for i in range(0, len(shape.points), 2):
+            d = shape.points[i] * nx + shape.points[i+1] * ny
+            if d > max_dist: max_dist = d
+            
+        # Collect close vertices (within 1 pixel) to average them
+        # This reduces jitter on flat surfaces
+        best_points = []
+        epsilon = 1.0
+        for i in range(0, len(shape.points), 2):
             px, py = shape.points[i], shape.points[i+1]
-            dist = px * nx + py * ny
-            if dist > max_dist:
-                max_dist = dist
-                best_point = (px, py)
-        return best_point
+            d = px * nx + py * ny
+            if d >= max_dist - epsilon:
+                best_points.append((px, py))
+                
+        if not best_points: return shape.x, shape.y
+        return sum(p[0] for p in best_points)/len(best_points), \
+               sum(p[1] for p in best_points)/len(best_points)
 
-    # Get contact point on A (direction of normal)
-    cp_x, cp_y = get_support_point(a, nx, ny)
+    cp_a = get_support_point(a, nx, ny)
+    cp_b = get_support_point(b, -nx, -ny)
+    
+    # Determine which point is the actual contact (Ledge Fix)
+    # We prefer the point that is physically inside the other shape
+    a_in_b = is_point_inside(cp_a[0], cp_a[1], b)
+    b_in_a = is_point_inside(cp_b[0], cp_b[1], a)
+    
+    if b_in_a and not a_in_b:
+        contact_x, contact_y = cp_b
+    elif a_in_b and not b_in_a:
+        contact_x, contact_y = cp_a
+    else:
+        # Both in or both out (flat stacking) -> Average
+        contact_x = (cp_a[0] + cp_b[0]) / 2
+        contact_y = (cp_a[1] + cp_b[1]) / 2
 
-    # Lever arms (Radius from center to contact)
-    ra_x, ra_y = cp_x - a.x, cp_y - a.y
-    rb_x, rb_y = cp_x - b.x, cp_y - b.y
+    # Lever arms
+    ra_x, ra_y = contact_x - a.x, contact_y - a.y
+    rb_x, rb_y = contact_x - b.x, contact_y - b.y
 
     # --- 2. Velocity at Contact Point ---
     vap_x = a.rb.velocity[0] - a.rb.angular_velocity * ra_y
@@ -273,15 +312,29 @@ def resolve_collision(a, b, normal, penetration):
     # --- 4. Apply Impulse ---
     impulse_x, impulse_y = j * nx, j * ny
 
+    # --- Friction Impulse (Tangential) ---
+    tx, ty = -ny, nx
+    vt = rel_vel_x * tx + rel_vel_y * ty
+    jt = -vt / denom # Friction impulse magnitude
+    
+    mu = (a.rb.friction + b.rb.friction) * 0.5
+    
+    # Clamp friction (Coulomb)
+    max_j = abs(j) * mu
+    jt = max(-max_j, min(jt, max_j))
+    
+    impulse_tx, impulse_ty = jt * tx, jt * ty
+
+    # Apply Total Impulse (Normal + Friction)
     if not a.rb.isStatic:
-        a.rb.velocity[0] -= impulse_x * inv_mass_a
-        a.rb.velocity[1] -= impulse_y * inv_mass_a
-        a.rb.angular_velocity -= (ra_x * impulse_y - ra_y * impulse_x) * a.rb.inv_inertia
+        a.rb.velocity[0] -= (impulse_x + impulse_tx) * inv_mass_a
+        a.rb.velocity[1] -= (impulse_y + impulse_ty) * inv_mass_a
+        a.rb.angular_velocity -= ((ra_x * impulse_y - ra_y * impulse_x) + (ra_x * impulse_ty - ra_y * impulse_tx)) * a.rb.inv_inertia
 
     if not b.rb.isStatic:
-        b.rb.velocity[0] += impulse_x * inv_mass_b
-        b.rb.velocity[1] += impulse_y * inv_mass_b
-        b.rb.angular_velocity += (rb_x * impulse_y - rb_y * impulse_x) * b.rb.inv_inertia
+        b.rb.velocity[0] += (impulse_x + impulse_tx) * inv_mass_b
+        b.rb.velocity[1] += (impulse_y + impulse_ty) * inv_mass_b
+        b.rb.angular_velocity += ((rb_x * impulse_y - rb_y * impulse_x) + (rb_x * impulse_ty - rb_y * impulse_tx)) * b.rb.inv_inertia
 
     # --- 5. Corrected Positional Correction ---
     percent = 0.2 # Lower this to 0.2 for stability
