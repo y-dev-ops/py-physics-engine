@@ -108,6 +108,10 @@ class Shape:
         for script in self.scripts_fixed_update:
                 script.fixed_update(delta)
 
+    def update_world_points(self):
+        # Base shapes might not need this, but polygons do.
+        # This prevents crashes if called on a shape without a custom implementation (like Circle).
+        pass
 
     def remove_script(script):
         self.scripts.remove(script)
@@ -130,13 +134,8 @@ class Circle(Shape):
     def __init__(self, _dict):
         _dict['type'] = 'circle'
         super().__init__(_dict)
-        self.base_points = [
-            self.x - self.radius, self.y,
-            self.y - self.radius, self.x,
-            self.x + self.radius, self.y,
-            self.y + self.radius, self.x
-        ]
-        self.points = self.base_points.copy()
+        # Circles don't need points for drawing with create_oval, but the attribute should exist.
+        self.points = []
 
     def get_aabb(self):
         return(
@@ -149,50 +148,67 @@ class Circle(Shape):
     def position(self, x, y):
         self.x = x
         self.y = y
-        self.base_points = [
-            self.x - self.radius, self.y,
-            self.y - self.radius, self.x,
-            self.x + self.radius, self.y,
-            self.y + self.radius, self.x
-        ]
-        self.points = self.rotation(self.angle)
-        self.screen.canvas.coords(self.canvas_id, *self.points[0::2])
+        # For a circle, position update is just moving the oval's bounding box.
+        if self.canvas_id is not None:
+            self.screen.canvas.coords(self.canvas_id, self.x - self.radius, self.y - self.radius, self.x + self.radius, self.y + self.radius)
+        
 
 class Rectangle(Shape):
     def __init__(self, _dict):
         _dict['type'] = 'rectangle'
         super().__init__(_dict)
-        hw, hh = self.width / 2, self.height / 2
-        self.x += hw
-        self.y += hh
-        self.base_points = [
-            self.x - hw, self.y - hh,
-            self.x + hw, self.y - hh,
-            self.x + hw, self.y + hh,
-            self.x - hw, self.y + hh
+
+        hw, hh = self.width / 2.0, self.height / 2.0
+
+        # local_points are fixed in local (centered) coordinates
+        self.local_points = [
+            -hw, -hh,
+             hw, -hh,
+             hw,  hh,
+            -hw,  hh
         ]
-        self.points = self.base_points.copy()
+
+        # world points will be computed each frame
+        self.points = [0.0]*8
+        # ensure x,y are centers; your constructor previously did x += hw etc.
+        # assume self.x,self.y already are center from unpack
+        self.angle = getattr(self, "angle", 0.0)  # degrees
+        self.update_world_points()
+
+    def update_world_points(self):
+        cx, cy = self.x, self.y
+        a = math.radians(self.angle)  # keep angular arithmetic in radians internally
+        c, s = math.cos(a), math.sin(a)
+
+        out = []
+        lp = self.local_points
+        for i in range(0, len(lp), 2):
+            lx, ly = lp[i], lp[i+1]
+            rx = lx * c - ly * s
+            ry = lx * s + ly * c
+            out.append(rx + cx)
+            out.append(ry + cy)
+
+        self.points = out
+        if self.canvas_id is not None:
+            self.screen.canvas.coords(self.canvas_id, *self.points)
+
+    def position(self, cx, cy):
+        # move center only, do NOT rebuild local_points
+        self.x = cx
+        self.y = cy
+        self.update_world_points()
+
+    def rotate_to(self, angle_deg):
+        # set absolute angle in degrees
+        self.angle = angle_deg
+        self.update_world_points()
+
+    def rotate_by(self, d_angle_deg):
+        self.angle += d_angle_deg
+        self.update_world_points()
 
     def get_aabb(self):
         xs = self.points[0::2]
         ys = self.points[1::2]
         return min(xs), min(ys), max(xs), max(ys)
-
-
-    def position(self, cx, cy):
-        self.x = cx
-        self.y = cy
-
-        hw = self.width / 2
-        hh = self.height / 2
-
-        self.base_points = [
-            self.x - hw, self.y - hh,
-            self.x + hw, self.y - hh,
-            self.x + hw, self.y + hh,
-            self.x - hw, self.y + hh
-        ]
-
-        
-        self.points = self.rotation(self.angle)
-        self.screen.canvas.coords(self.canvas_id, *self.points)

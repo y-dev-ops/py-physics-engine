@@ -16,22 +16,26 @@ def integrate(shape, delta):
     # 0.98 means it loses 2% of its spin every frame
     shape.rb.velocity[0] *= 0.99
     shape.rb.velocity[1] *= 0.99
+    shape.rb.angular_velocity *= 0.95
 
-    # --- Angular Integration (ONLY ONCE) ---
-    if not shape.rb.isStatic and shape.rb.inv_inertia > 0:
-        alpha = shape.rb.torque * shape.rb.inv_inertia
-        shape.rb.angular_velocity += alpha * delta
-        shape.rb.angular_velocity *= 0.95 # Apply angular damping here
-
-        angle_delta_rad = shape.rb.angular_velocity * delta
-        shape.angle += math.degrees(angle_delta_rad)
-
-    # --- Update Position and Visuals ---
-    # This must happen AFTER angular changes so the rotation is applied correctly.
+    
     new_x = shape.x + shape.rb.velocity[0] * delta
     new_y = shape.y + shape.rb.velocity[1] * delta
-    shape.position(new_x, new_y) # This updates center and calls update_world_points()
+    shape.position(new_x, new_y)
 
+    # 2. Angular Movement (NEW)
+    # Angular Accel = Torque / Inertia
+    alpha = shape.rb.torque * shape.rb.inv_inertia
+    shape.rb.angular_velocity += alpha * delta
+
+    # Update Angle (Convert Radians to Degrees for your Shape class)
+    # Your Shape uses degrees, but physics uses radians.
+    angle_change_radians = shape.rb.angular_velocity * delta
+
+    shape.angle += math.degrees(angle_change_radians)
+
+    # Apply Rotation
+    shape.rotation(shape.angle)
 
     # Reset Forces
     shape.rb.force = [0,0]
@@ -51,12 +55,13 @@ def cal_gravity(shape, g=9.8):
 # --- trying to do SAT ----
 
 def get_axes(points):
+    #Get normals for SAT. For Rectangles, we only need 2 axes (width/height).
     axes = []
-    # Check ALL edges, not just the first two
-    for i in range(0, len(points), 2): 
+    # Loop only the first 2 edges (enough for a rectangle)
+    # If you use non-rect polygons later, change range(2) to range(len(points)//2)
+    for i in range(0, 4, 2): 
         x1, y1 = points[i], points[i+1]
         x2, y2 = points[(i+2) % len(points)], points[(i+3) % len(points)]
-        
         dx, dy = x2 - x1, y2 - y1
         # Normal is (-dy, dx)
         length = math.hypot(dx, dy)
@@ -221,80 +226,97 @@ def resolve_collision(a, b, normal, penetration):
 
     nx, ny = normal
 
-    # --- 1. Find a Better Contact Point ---
-    # To tip over, the contact point MUST be at the corner/edge, not the center.
-    def get_support_point(shape, nx, ny):
-        if shape.type == "circle":
-            return shape.x + nx * shape.radius, shape.y + ny * shape.radius
-        # For rectangles, find the vertex furthest in the direction of the normal
-        best_point = (shape.points[0], shape.points[1])
-        max_dist = -float('inf')
-        for i in range(0, len(shape.points), 2):
-            px, py = shape.points[i], shape.points[i+1]
-            dist = px * nx + py * ny
-            if dist > max_dist:
-                max_dist = dist
-                best_point = (px, py)
-        return best_point
+    # --- 1. Find Contact Point (Approximation) ---
+    # We need the point where force is applied to calculate torque (lever arm).
+    # Simple method: The point on the surface of A closest to B.
+    
+    # Vector from A to B
+    # Note: This works best if A or B is a circle. 
+    # For Rect-Rect, this is a rough approximation but often "good enough" for simple games.
+    
+    contact_x = a.x + nx * (penetration/2) # Roughly halfway? 
+    contact_y = a.y + ny * (penetration/2)
+    
+    # Better Circle estimation:
+    if a.type == "circle":
+        contact_x = a.x + nx * a.radius
+        contact_y = a.y + ny * a.radius
+    elif b.type == "circle":
+        # Normal points A->B, so flip for B's surface
+        contact_x = b.x - nx * b.radius
+        contact_y = b.y - ny * b.radius
 
-    # Get contact point on A (direction of normal)
-    cp_x, cp_y = get_support_point(a, nx, ny)
+    # rA and rB are vectors from Center of Mass to Contact Point
+    ra_x = contact_x - a.x
+    ra_y = contact_y - a.y
+    rb_x = contact_x - b.x
+    rb_y = contact_y - b.y
 
-    # Lever arms (Radius from center to contact)
-    ra_x, ra_y = cp_x - a.x, cp_y - a.y
-    rb_x, rb_y = cp_x - b.x, cp_y - b.y
-
-    # --- 2. Velocity at Contact Point ---
+    # --- 2. Calculate Relative Velocity (Including Rotation) ---
+    # Velocity at contact point = Linear Vel + Angular Vel * Radius (Cross product)
+    # Vp = V + w x r
+    
     vap_x = a.rb.velocity[0] - a.rb.angular_velocity * ra_y
     vap_y = a.rb.velocity[1] + a.rb.angular_velocity * ra_x
+    
     vbp_x = b.rb.velocity[0] - b.rb.angular_velocity * rb_y
     vbp_y = b.rb.velocity[1] + b.rb.angular_velocity * rb_x
 
     rel_vel_x = vbp_x - vap_x
     rel_vel_y = vbp_y - vap_y
+    
     vel_along_normal = rel_vel_x * nx + rel_vel_y * ny
 
-    if vel_along_normal > 0: return # Moving apart
+    if vel_along_normal > 0:
+        return
 
-    # --- 3. Impulse Calculation ---
+    # --- 3. Calculate Rotational Impulse Scalar (j) ---
     e = min(a.rb.bounciness, b.rb.bounciness)
-    ra_cross_n = ra_x * ny - ra_y * nx
-    rb_cross_n = rb_x * ny - rb_y * nx
     
-    inv_mass_a = 1/a.rb.mass if not a.rb.isStatic else 0
-    inv_mass_b = 1/b.rb.mass if not b.rb.isStatic else 0
+    # Rotational terms: (r x n)^2 / I
+    ra_cross_n = cross_product_2d((ra_x, ra_y), normal)
+    rb_cross_n = cross_product_2d((rb_x, rb_y), normal)
+    
+    inv_mass_sum = (a.rb.inv_inertia * ra_cross_n * ra_cross_n) + \
+                   (b.rb.inv_inertia * rb_cross_n * rb_cross_n) + \
+                   (1/a.rb.mass if not a.rb.isStatic else 0) + \
+                   (1/b.rb.mass if not b.rb.isStatic else 0)
 
-    denom = inv_mass_a + inv_mass_b + \
-            (ra_cross_n**2 * a.rb.inv_inertia) + \
-            (rb_cross_n**2 * b.rb.inv_inertia)
+    j = -(1 + e) * vel_along_normal
+    j /= inv_mass_sum
 
-    j = -(1 + e) * vel_along_normal / denom
+    impulse_x = j * nx
+    impulse_y = j * ny
 
-    # --- 4. Apply Impulse ---
-    impulse_x, impulse_y = j * nx, j * ny
-
+    # --- 4. Apply Impulse (Linear + Angular) ---
     if not a.rb.isStatic:
-        a.rb.velocity[0] -= impulse_x * inv_mass_a
-        a.rb.velocity[1] -= impulse_y * inv_mass_a
-        a.rb.angular_velocity -= (ra_x * impulse_y - ra_y * impulse_x) * a.rb.inv_inertia
+        # Linear
+        a.rb.velocity[0] -= impulse_x / a.rb.mass
+        a.rb.velocity[1] -= impulse_y / a.rb.mass
+        # Angular: Torque = r x F
+        # Angular Vel += (r x Impulse) / I
+        impulse_torque = cross_product_2d((ra_x, ra_y), (impulse_x, impulse_y))
+        a.rb.angular_velocity -= impulse_torque * a.rb.inv_inertia
 
     if not b.rb.isStatic:
-        b.rb.velocity[0] += impulse_x * inv_mass_b
-        b.rb.velocity[1] += impulse_y * inv_mass_b
-        b.rb.angular_velocity += (rb_x * impulse_y - rb_y * impulse_x) * b.rb.inv_inertia
+        b.rb.velocity[0] += impulse_x / b.rb.mass
+        b.rb.velocity[1] += impulse_y / b.rb.mass
+        impulse_torque = cross_product_2d((rb_x, rb_y), (impulse_x, impulse_y))
+        b.rb.angular_velocity += impulse_torque * b.rb.inv_inertia
 
-    # --- 5. Corrected Positional Correction ---
-    percent = 0.2 # Lower this to 0.2 for stability
-    slop = 0.01
-    total_inv_mass = inv_mass_a + inv_mass_b
-    if total_inv_mass == 0: return
 
-    correction_mag = max(penetration - slop, 0.0) / total_inv_mass * percent
+    # --- 5. Positional Correction (Anti-Sinking) ---
+    # (Same as before, rotation doesn't change this much)
+    percent = 0.5
+    slop = 0.05
+    correction_mag = max(penetration - slop, 0.0) / ((1/a.rb.mass if not a.rb.isStatic else 0) + (1/b.rb.mass if not b.rb.isStatic else 0)) * percent
+    cx = correction_mag * nx
+    cy = correction_mag * ny
+
     if not a.rb.isStatic:
-        a.position(a.x - nx * correction_mag * inv_mass_a, a.y - ny * correction_mag * inv_mass_a)
+        a.position(a.x - cx / a.rb.mass, a.y - cy / a.rb.mass)
     if not b.rb.isStatic:
-        b.position(b.x + nx * correction_mag * inv_mass_b, b.y + ny * correction_mag * inv_mass_b)
-
+        b.position(b.x + cx / b.rb.mass, b.y + cy / b.rb.mass)
 
 
 
@@ -309,8 +331,7 @@ def physics_engine(delta, shapes):
 
     # 2. Iterative Collision Solver (Run this 4 to 8 times per frame)
     # More iterations = Stiffer/More solid objects. Less = Mushy.
-    solver_iterations = 8
-    grid = build_spatial_grid(shapes)
+    solver_iterations = 4 
     
     for _ in range(solver_iterations):
         # Optimization: Re-build grid only once if objects don't move fast, 
@@ -318,7 +339,7 @@ def physics_engine(delta, shapes):
         
         # Note: If you have many objects, move build_spatial_grid outside this loop
         # and just iterate the pairs. For < 50 objects, rebuilding is fine.
-        
+        grid = build_spatial_grid(shapes)
         
         processed_pairs = set() # To avoid double checking A-B and B-A
 
@@ -338,3 +359,5 @@ def physics_engine(delta, shapes):
                     collided, normal, penetration = check_collision(a,b)# check type of col
                     if collided:
                         resolve_collision(a, b, normal, penetration)
+
+

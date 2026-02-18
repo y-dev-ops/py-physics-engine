@@ -24,13 +24,13 @@ class Input:
         if self.hold_keys.get(key):
             return 
 
-        print(f"Key Down: {key}")
+        #print(f"Key Down: {key}")
         self.down_keys[key] = True
         self.hold_keys[key] = True
         self.up_keys[key] = False
     
     def handle_keyup(self, key):
-        print(f"Key Up: {key}")
+        #print(f"Key Up: {key}")
         self.down_keys[key] = False
         self.hold_keys[key] = False
         self.up_keys[key] = True

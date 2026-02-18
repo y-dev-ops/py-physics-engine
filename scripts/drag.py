@@ -37,7 +37,7 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         
         if shape:
             self.dragged_shape = shape
-            self.dragged_shape.rb.gravity = False
+            self.dragged_shape.rb.gravity = not self.prev_gravity
 
     def mouse_drag(self):
         if not self.dragged_shape:
@@ -49,7 +49,7 @@ class drag(Template): # i need to imporve the script template copy to be like mo
     def mouse_up(self):
         if self.dragged_shape:
             #print("Released:", self.dragged_shape)
-            self.dragged_shape.rb.gravity = True
+            self.dragged_shape.rb.gravity = self.prev_gravity
 
         self.dragged_shape = None
 
@@ -57,6 +57,8 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         print(self.shape, 'added script')
         self.dragged_shape = None
         self.strength = 10
+        self.prev_gravity = self.shape.rb.gravity
+
 
     def update(self, delta):
         if (self.shape.screen.input.getKeyDown('mouse1')):
