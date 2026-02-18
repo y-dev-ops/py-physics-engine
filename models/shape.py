@@ -21,6 +21,7 @@ class Shape:
             'mass': 1000,
         },
         'type': '',
+        'outline': {},
         'scripts': [],
         'scripts_update': [],
         'scripts_fixed_update': [],
@@ -57,6 +58,11 @@ class Shape:
         elif shape.type == "circle":
             shape.rb.inertia = 0.5 * m * (shape.radius**2)
 
+        elif shape.type == "triangle":
+            b, h = shape.width, shape.height
+            shape.rb.inertia = (m * (b**2 + b*h + h**2)) / 18.0
+
+
         # Cache the inverse for faster math later
         print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
         shape.rb.inv_inertia = 1.0 / shape.rb.inertia if shape.rb.inertia > 0 else 0
@@ -70,6 +76,24 @@ class Shape:
         self.unpack(data)
         self.calculate_inertia(self)
 
+    def destroy(self):
+        # 1. Remove from Tkinter Canvas
+        if self.canvas_id is not None:
+            self.screen.canvas.delete(self.canvas_id)
+            self.canvas_id = None
+        
+        # 2. Tell the screen/manager to forget about us
+        # This removes it from the list the physics engine uses
+        if self in self.screen.shapes:
+            self.screen.shapes.remove(self)
+        if (len(self.scripts) > 0):
+            for script in self.scripts:
+                self.remove_script(script, insideLoop=True)
+
+        self.scripts.clear()
+        
+        # 3. Optional: Mark as dead for other scripts to check
+        self.is_destroyed = True
 
     def rotation(self, angle_deg):
         self.angle = angle_deg
@@ -100,6 +124,16 @@ class Shape:
 
         self.scripts.append(script)
         
+    def remove_script(self, script, insideLoop = False):
+        if (script.hasUpdate):
+            self.scripts_update.remove(script)
+        if (script.hasFUpdate):
+            self.scripts_fixed_update.remove(script)
+        if (not insideLoop):
+            self.scripts.remove(script)
+
+        script.destroyed()
+
     def Update(self, delta):
         for script in self.scripts_update:
                 script.update(delta)
@@ -113,8 +147,7 @@ class Shape:
         # This prevents crashes if called on a shape without a custom implementation (like Circle).
         pass
 
-    def remove_script(script):
-        self.scripts.remove(script)
+
 
     def position(self, x, y):
         self.x = x
@@ -206,6 +239,61 @@ class Rectangle(Shape):
 
     def rotate_by(self, d_angle_deg):
         self.angle += d_angle_deg
+        self.update_world_points()
+
+    def get_aabb(self):
+        xs = self.points[0::2]
+        ys = self.points[1::2]
+        return min(xs), min(ys), max(xs), max(ys)
+
+
+
+class Triangle(Shape):
+    def __init__(self, _dict):
+        _dict['type'] = 'triangle'
+        super().__init__(_dict)
+
+        b = self.width
+        h = self.height
+
+        # To rotate naturally, (0,0) must be the Centroid.
+        # Centroid is at h/3 from the base.
+        # Vertex 1 (Top):    (0, -2h/3)
+        # Vertex 2 (Bottom-L): (-b/2, h/3)
+        # Vertex 3 (Bottom-R): (b/2, h/3)
+        
+        self.local_points = [
+             0,      -2 * h / 3.0,
+            -b / 2.0, h / 3.0,
+             b / 2.0, h / 3.0
+        ]
+
+        self.points = [0.0] * 6
+        self.angle = getattr(self, "angle", 0.0)
+        self.update_world_points()
+
+    def update_world_points(self):
+        cx, cy = self.x, self.y
+        a = math.radians(self.angle)
+        c, s = math.cos(a), math.sin(a)
+
+        out = []
+        lp = self.local_points
+        for i in range(0, len(lp), 2):
+            lx, ly = lp[i], lp[i+1]
+            rx = lx * c - ly * s
+            ry = lx * s + ly * c
+            out.append(rx + cx)
+            out.append(ry + cy)
+
+        self.points = out
+        if self.canvas_id is not None:
+            # Note: coords() handles any number of points automatically
+            self.screen.canvas.coords(self.canvas_id, *self.points)
+
+    def position(self, cx, cy):
+        self.x = cx
+        self.y = cy
         self.update_world_points()
 
     def get_aabb(self):

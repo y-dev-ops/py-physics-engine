@@ -5,11 +5,11 @@ import basic.input as inp
 
 
 class Screen:
-    def __init__(self, title="My App", width=400, height=300, fps=60):
+    def __init__(self, title="My App", width=400, height=300, fps=60, screen_color = "white"):
         self.root = tk.Tk()
         self.root.title(title)
         self.root.geometry(f"{width}x{height}")
-        self.canvas = tk.Canvas(self.root, bg="white")
+        self.canvas = tk.Canvas(self.root, bg=screen_color)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
         self.shapes = []  # keep track of shapes
@@ -36,13 +36,20 @@ class Screen:
 
         # 4. Mouse Up
         self.canvas.bind("<ButtonRelease>", lambda e: self.input.handle_key_manager(e, isUp=True, isMouse=True))
-
+    def get_outline(self, outline):
+        outline_color = outline['color']
+        outline_stroke = outline['stroke']
+        if (outline_stroke == 0):
+            outline_color=None
+            outline_stroke=None
+        return [outline_color, outline_stroke]
 
     def add_circle(self,_dict):
         _dict['screen'] = self
         circle = Circle(_dict)
+        outline=self.get_outline(circle.outline)
         circle.canvas_id = self.canvas.create_oval(
-            circle.x - circle.radius, circle.y - circle.radius, circle.x + circle.radius, circle.y + circle.radius, fill=circle.color
+            circle.x - circle.radius, circle.y - circle.radius, circle.x + circle.radius, circle.y + circle.radius, fill=circle.color, outline=outline[0], width=outline[1]
         )
         self.shapes.append(circle)
         return circle
@@ -50,11 +57,22 @@ class Screen:
     def add_rectangle(self, _dict):
         _dict['screen'] = self
         rect = Rectangle(_dict)
+        outline=self.get_outline(rect.outline)
         rect.canvas_id = self.canvas.create_polygon(
-            rect.points, fill=rect.color
+            rect.points, fill=rect.color, outline=outline[0], width=outline[1]
         )
         self.shapes.append(rect)
         return rect
+
+    def add_triangle(self, _dict):
+        _dict['screen'] = self
+        tri = Triangle(_dict)
+        outline=self.get_outline(tri.outline)
+        tri.canvas_id = self.canvas.create_polygon(
+            tri.points, fill=tri.color, outline=outline[0], width=outline[1]
+        )
+        self.shapes.append(tri)
+        return tri
 
 
     def add_button(self, text, command):

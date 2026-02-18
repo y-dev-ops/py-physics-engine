@@ -30,12 +30,16 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         mouse_y = self.shape.screen.root.winfo_pointery() - self.shape.screen.root.winfo_rooty()
         return [mouse_x, mouse_y]
 
-    def mouse_down(self):
+    def mouse_down(self, destroy=False):
+
         x, y = self.get_mouse_p()
 
         shape = self.get_shape_at(x, y)
         
         if shape:
+            if (destroy):
+                self.shape.destroy()
+                return
             self.dragged_shape = shape
             self.dragged_shape.rb.gravity = not self.prev_gravity
 
@@ -67,4 +71,7 @@ class drag(Template): # i need to imporve the script template copy to be like mo
             self.mouse_drag()
         if (self.shape.screen.input.getKeyUp('mouse1')):
             self.mouse_up()
+
+        if (self.shape.screen.input.getKeyDown('mouse3')):
+            self.mouse_down(destroy=True)
         

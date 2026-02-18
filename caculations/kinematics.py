@@ -192,24 +192,23 @@ def circle_circle_collision(a, b):
     return dx*dx + dy*dy < r*r
 
 def check_collision(a, b):
-    if a.type == "rectangle" and b.type == "rectangle":
-        return sat_collision(a, b)
-    
-    if a.type == "circle" and b.type == "circle":
+    if a.type == "circle" and b.type == "circle": #circle with circle
         return circle_circle_collision(a, b)
-    
-    if a.type == "circle" and b.type == "rectangle":
+
+    if a.type != "circle" and b.type == "circle":# not with circle
+        return sat_circle_poly(b, a)
+
+    if a.type == "circle" and b.type != "circle": # circle with not
         # SAT returns Normal(Poly -> Circle), which is (B -> A).
         # Resolve expects (A -> B).
         # We MUST FLIP the normal.
         collided, normal, penetration = sat_circle_poly(a, b)
         return collided, (-normal[0], -normal[1]), penetration
         
-    if a.type == "rectangle" and b.type == "circle":
-        # SAT returns Normal(Poly -> Circle), which is (A -> B).
-        return sat_circle_poly(b, a)
-
-    return False, (0,0), 0
+    if a.type != "circle" and b.type != "circle": #not circle with not circle
+        return sat_collision(a, b)
+    
+    return False, (0,0), 0 # unkown, i dont know what could get u this
 
 
 def cross_product_2d(v1, v2):
@@ -221,6 +220,15 @@ def is_point_inside(x, y, shape):
         dy = y - shape.y
         return dx*dx + dy*dy <= shape.radius**2
     elif shape.type == "rectangle":
+        axes = get_axes(shape.points)
+        for axis in axes:
+            p = x * axis[0] + y * axis[1]
+            min_s, max_s = project(shape.points, axis)
+            # Allow a tiny bit of error
+            if p < min_s - 0.1 or p > max_s + 0.1:
+                return False
+        return True
+    elif shape.type == "triangle":
         axes = get_axes(shape.points)
         for axis in axes:
             p = x * axis[0] + y * axis[1]

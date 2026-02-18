@@ -12,19 +12,26 @@ from scripts.drag import *
 screen_title = "phy engine"
 is_fullscreen = True
 fps = 60
+screen_color = "black"
 
-def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[]): #here we turn your vars into dict for easy transfer between objects
+def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}): #here we turn your vars into dict for easy transfer between objects
     def_material = {
         'bounciness': 0.6,
         'friction': 0.4,
         'static_friction': 0.6,
     }
+    def_outline = {
+        'color': 'black',
+        'stroke': 1, # 0 for no outline
+    }
+
     def_material.update(material) 
+    def_outline.update(outline)
     
     def_dict = {
         'x': position[0],
         'y': position[1],
-        'angle': angle, #
+        'angle': angle, 
         'color': color,
         'rb': {
             'gravity': gravity,
@@ -35,6 +42,7 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
             'static_friction': def_material['static_friction'],
             'mass': mass,
         },
+        'outline': def_outline,
         'scripts': scripts,
     }
     if len(size) > 1:
@@ -64,6 +72,12 @@ def inspector(screen): # here you add every Shape you need in your screen
         'static_friction': 0.8,
     }
 
+    #--- Outline Settings ---
+    outline = {
+        'color': 'white',
+        'stroke': 1, # 0 for no outline
+    }
+
     # --- scene objects ---
 
     # circle object
@@ -75,7 +89,8 @@ def inspector(screen): # here you add every Shape you need in your screen
         isStatic=False,
         scripts=[
             drag()
-        ]
+        ],
+        outline=outline
     ))
 
     # rect_3 object
@@ -87,7 +102,22 @@ def inspector(screen): # here you add every Shape you need in your screen
         isStatic=False,
         scripts=[
             drag()
-        ]
+        ],
+        outline=outline
+    ))
+
+    # tri object
+    tri = screen.add_triangle(pack_var(
+        position=[400, 100],
+        size=[150, 150],
+        material=spongy_material,
+        color='grey',
+        mass=10,
+        isStatic=False,
+        scripts=[
+            drag()
+        ],
+        outline=outline
     ))
 
     # rect_5 object
@@ -99,7 +129,8 @@ def inspector(screen): # here you add every Shape you need in your screen
         isStatic=False,
         scripts=[
             drag()
-        ]
+        ],
+        outline=outline
     ))
     
     # rect_4 object
@@ -107,19 +138,21 @@ def inspector(screen): # here you add every Shape you need in your screen
         position=[600, 600],
         size=[700, 50],
         color='green',
+        outline=outline
     ))
 
     # rect object
     rect = screen.add_rectangle(pack_var(
         position=[50, 500],
         size=[120, 80],
-        color='black',
+        color='white',
         ingore_static=True,
         isStatic=False,
         gravity=False,
         scripts=[
             drag()
-        ]
+        ],
+        outline=outline
     ))
     #rect.add_script(follow_the_mouse(rect))
 
@@ -128,13 +161,18 @@ def inspector(screen): # here you add every Shape you need in your screen
         position=[0, 300],
         size=[400, 80],
         color='pink',
+        outline={
+            'color': 'blue',
+            'stroke': 5,
+        }
     ))
+
     # Note: isStatic is True by def
 
 def main(): # main, handling everthing on this project
 
     # --- Manage Screen ---
-    screen = Screen(screen_title, fps=fps)
+    screen = Screen(screen_title, fps=fps, screen_color=screen_color)
     screen.root.attributes('-fullscreen', is_fullscreen) # fullscreen mode
     
     # --- activate inspector ---
@@ -162,3 +200,16 @@ def main(): # main, handling everthing on this project
     screen.show() #display screen
 
 main() # calling main func to activate everything
+
+#what i have:
+#change type to poly for better control
+#position, rotation
+#kinematics works : gravity, angular v,
+#input system
+#centered Shapes, rathar than using TOP-LEFT system
+# added triangle
+# added outline
+#add destroy item when right click: check drag()
+
+# TO DO next:
+#idk im too fast
