@@ -19,6 +19,7 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
         'friction': 0.4,
         'static_friction': 0.6,
     }
+    def_material.update(material) 
     
     def_dict = { # to do: next add the scripts here, so they applied directly
         'x': position[0],
@@ -29,9 +30,9 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
             'gravity': gravity,
             'isStatic': isStatic,
             'ingore_static': ingore_static,
-            'bounciness': def_material['bounciness'] if material.get('bounciness') == None else material.get('bounciness'),
-            'friction': def_material['friction'] if material.get('friction') == None else material.get('friction'),
-            'static_friction': def_material['static_friction'] if material.get('static_friction') == None else material.get('static_friction'),
+            'bounciness': def_material['bounciness'],
+            'friction': def_material['friction'],
+            'static_friction': def_material['static_friction'],
             'mass': mass,
         },
         'scripts': scripts,
@@ -82,7 +83,7 @@ def inspector(screen): # here you add every Shape you need in your screen
         position=[600, 100],
         size=[200, 150],
         material=spongy_material,
-        mass=3,
+        mass=10,
         isStatic=False,
         scripts=[
             drag()
@@ -91,8 +92,8 @@ def inspector(screen): # here you add every Shape you need in your screen
 
     # rect_5 object
     rect_5 = screen.add_rectangle(pack_var(
-        position=[800, 50],
-        size=[50, 150],
+        position=[900, 50],
+        size=[50, 50],
         material=bouncy_material,
         mass=3,
         isStatic=False,
@@ -117,7 +118,7 @@ def inspector(screen): # here you add every Shape you need in your screen
         isStatic=False,
         gravity=False,
         scripts=[
-            #follow_the_mouse()
+            drag()
         ]
     ))
     #rect.add_script(follow_the_mouse(rect))
