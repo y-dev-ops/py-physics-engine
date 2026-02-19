@@ -11,17 +11,14 @@ class follow_the_mouse(Template): # i need to imporve the script template copy t
         self.obj.rb.ingore_static = True
 
     def update(self, delta): # to avoid def between update and fixed update, we will make it smooth tracking, and we want it to ingore static objects
-        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_x, mouse_y = pygame.mouse.get_pos()        
         
-        # Calculate the distance to the mouse # issue: top-left, fixed to be centered
-        dx = mouse_x - (self.obj.x)
-        dy = mouse_y - (self.obj.y)
+        dx = mouse_x - self.obj.x
+        dy = mouse_y - self.obj.y
         
-        # Instead of teleporting, set a velocity that "pulls" it to the cursor
-        # Lower the 0.1 to make it "lazier/smoother", raise it for "snappier"
-        smoothing = 0.15 
-        self.obj.rb.velocity[0] = dx * (smoothing / delta)
-        self.obj.rb.velocity[1] = dy * (smoothing / delta)
-
-        #rotate for testing,
-        #self.shape.rotation(self.shape.angle + 1)
+        # Set velocity to move towards the cursor.
+        # This is a spring-like force. A larger multiplier makes it "snappier".
+        # Avoid dividing by delta, which causes instability with variable frame rates.
+        strength = 10
+        self.obj.rb.velocity[0] = dx * strength
+        self.obj.rb.velocity[1] = dy * strength

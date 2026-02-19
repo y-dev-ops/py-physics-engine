@@ -63,6 +63,9 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         self.strength = 10
         self.prev_gravity = self.obj.rb.gravity
 
+    def called_with_get(self, script):
+        print('i got called from :', script)
+
 
     def update(self, delta):
         if (self.obj.screen.input.getKeyDown('mouse1')):

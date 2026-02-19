@@ -1,5 +1,6 @@
 from models.rigidbody import *
 import math
+import pygame
 
 
 class Shape:
@@ -58,14 +59,22 @@ class Shape:
             shape.rb.inertia = 0.5 * m * (shape.radius**2)
 
         elif shape.type == "triangle":
+            # Formula for a solid isosceles triangle rotating about its centroid.
+            # Assumes the local_points are set up with the centroid at (0,0).
             b, h = shape.width, shape.height
-            shape.rb.inertia = (m * (b**2 + b*h + h**2)) / 18.0
+            shape.rb.inertia = m * (b**2 / 24 + h**2 / 18)
 
 
         # Cache the inverse for faster math later
         #print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
         shape.rb.inv_inertia = 1.0 / shape.rb.inertia if shape.rb.inertia > 0 else 0
     
+    def getcomponent(self, component):
+        for script in self.scripts:
+            if type(script).__name__ == component:
+                return script
+        print('component not found, check your spelling')
+        return None
 
     def __init__(self, _dict):
         #print(_dict)
@@ -94,22 +103,23 @@ class Shape:
         self.angle = angle_deg
 
         cx, cy = self.x, self.y
-        a = math.radians(self.angle)
-        c, s = math.cos(a), math.sin(a)
-
         out = []
-
         for i in range(0, len(self.base_points), 2):
-            x = self.base_points[i] - cx
-            y = self.base_points[i+1] - cy
-
-            xr = x * c - y * s + cx
-            yr = x * s + y * c + cy
-
-            out.extend([xr, yr])
+            vec = pygame.math.Vector2(self.base_points[i] - cx, self.base_points[i+1] - cy).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
 
         return out
 
+
+    def rotate_to(self, angle_deg):
+        # set absolute angle in degrees
+        self.angle = angle_deg
+        self.update_world_points()
+
+    def rotate_by(self, d_angle_deg):
+        self.angle += d_angle_deg
+        self.update_world_points()
 
     def add_script(self, script):
         if (script.hasUpdate):
@@ -202,17 +212,13 @@ class Rectangle(Shape):
 
     def update_world_points(self):
         cx, cy = self.x, self.y
-        a = math.radians(self.angle)  # keep angular arithmetic in radians internally
-        c, s = math.cos(a), math.sin(a)
 
         out = []
         lp = self.local_points
         for i in range(0, len(lp), 2):
-            lx, ly = lp[i], lp[i+1]
-            rx = lx * c - ly * s
-            ry = lx * s + ly * c
-            out.append(rx + cx)
-            out.append(ry + cy)
+            vec = pygame.math.Vector2(lp[i], lp[i+1]).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
 
         self.points = out
 
@@ -220,15 +226,6 @@ class Rectangle(Shape):
         # move center only, do NOT rebuild local_points
         self.x = cx
         self.y = cy
-        self.update_world_points()
-
-    def rotate_to(self, angle_deg):
-        # set absolute angle in degrees
-        self.angle = angle_deg
-        self.update_world_points()
-
-    def rotate_by(self, d_angle_deg):
-        self.angle += d_angle_deg
         self.update_world_points()
 
     def get_aabb(self):
@@ -264,17 +261,13 @@ class Triangle(Shape):
 
     def update_world_points(self):
         cx, cy = self.x, self.y
-        a = math.radians(self.angle)
-        c, s = math.cos(a), math.sin(a)
 
         out = []
         lp = self.local_points
         for i in range(0, len(lp), 2):
-            lx, ly = lp[i], lp[i+1]
-            rx = lx * c - ly * s
-            ry = lx * s + ly * c
-            out.append(rx + cx)
-            out.append(ry + cy)
+            vec = pygame.math.Vector2(lp[i], lp[i+1]).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
 
         self.points = out
 

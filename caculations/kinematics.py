@@ -185,30 +185,44 @@ def sat_circle_poly(circle, poly):
 
 #other cond
 
-def circle_circle_collision(a, b):
-    dx = a.x - b.x
-    dy = a.y - b.y
-    r = a.radius + b.radius
-    return dx*dx + dy*dy < r*r
+def circle_circle_collision(a, b): # this was a bool, now it returns full data
+    dx = b.x - a.x
+    dy = b.y - a.y
+    dist_sq = dx*dx + dy*dy
+    r_sum = a.radius + b.radius
+    
+    collided = dist_sq < r_sum * r_sum
+    if not collided:
+        return False, (0,0), 0
+        
+    dist = math.sqrt(dist_sq) if dist_sq > 0 else 0
+    penetration = r_sum - dist
+    
+    if dist > 0:
+        normal = (dx / dist, dy / dist)
+    else: # circles are exactly on top of each other
+        normal = (0, 1) # push up
+        
+    return True, normal, penetration
 
 def check_collision(a, b):
-    if a.type == "circle" and b.type == "circle": #circle with circle
+    # Circle vs Circle
+    if a.type == "circle" and b.type == "circle":
         return circle_circle_collision(a, b)
 
-    if a.type != "circle" and b.type == "circle":# not with circle
-        return sat_circle_poly(b, a)
+    # Polygon vs Circle (order matters for normal direction)
+    if a.type != "circle" and b.type == "circle":
+        return sat_circle_poly(b, a) # Normal from Poly(a) to Circle(b) is correct.
 
-    if a.type == "circle" and b.type != "circle": # circle with not
-        # SAT returns Normal(Poly -> Circle), which is (B -> A).
-        # Resolve expects (A -> B).
-        # We MUST FLIP the normal.
+    if a.type == "circle" and b.type != "circle":
         collided, normal, penetration = sat_circle_poly(a, b)
-        return collided, (-normal[0], -normal[1]), penetration
+        return collided, (-normal[0], -normal[1]), penetration # Must flip normal.
         
-    if a.type != "circle" and b.type != "circle": #not circle with not circle
+    # Polygon vs Polygon
+    if a.type != "circle" and b.type != "circle":
         return sat_collision(a, b)
     
-    return False, (0,0), 0 # unkown, i dont know what could get u this
+    return False, (0,0), 0 # Should not be reached
 
 
 def cross_product_2d(v1, v2):
@@ -363,39 +377,39 @@ def resolve_collision(a, b, normal, penetration):
 
 
 def physics_engine(delta, shapes):
-    # 1. Apply Forces & Move
+    # 1. Apply forces and integrate positions
     for shape in shapes:
         cal_gravity(shape)
         integrate(shape, delta)
 
-    # 2. Iterative Collision Solver (Run this 4 to 8 times per frame)
-    # More iterations = Stiffer/More solid objects. Less = Mushy.
-    solver_iterations = 8
+    # 2. Broadphase: Find all potential collision pairs using a spatial grid
     grid = build_spatial_grid(shapes)
-    
-    for _ in range(solver_iterations):
-        # Optimization: Re-build grid only once if objects don't move fast, 
-        # but for accuracy we iterate the pairs.
-        
-        # Note: If you have many objects, move build_spatial_grid outside this loop
-        # and just iterate the pairs. For < 50 objects, rebuilding is fine.
-        
-        
-        processed_pairs = set() # To avoid double checking A-B and B-A
+    pairs = []
+    processed_pairs = set()
 
-        for cell in grid.values():
-            # Check objects in same cell
-            for i in range(len(cell)):
-                for j in range(i + 1, len(cell)):
-                    a, b = cell[i], cell[j]
-                    
-                    # Create unique ID for pair to avoid duplicates in neighbor checks
-                    pair_id = tuple(sorted((id(a), id(b))))
-                    if pair_id in processed_pairs: continue
+    for cell in grid.values():
+        for i in range(len(cell)):
+            for j in range(i + 1, len(cell)):
+                a, b = cell[i], cell[j]
+                
+                pair_id = tuple(sorted((id(a), id(b))))
+                if pair_id in processed_pairs:
+                    continue
+                
+                if a.rb.isStatic and b.rb.isStatic:
+                    continue
+                
+                # AABB check as a cheap pre-filter before adding to pair list
+                ax1, ay1, ax2, ay2 = a.get_aabb()
+                bx1, by1, bx2, by2 = b.get_aabb()
+                if ax1 < bx2 and ax2 > bx1 and ay1 < by2 and ay2 > by1:
+                    pairs.append((a, b))
                     processed_pairs.add(pair_id)
 
-                    if a.rb.isStatic and b.rb.isStatic: continue
-
-                    collided, normal, penetration = check_collision(a,b)# check type of col
-                    if collided:
-                        resolve_collision(a, b, normal, penetration)
+    # 3. Narrowphase & Solver: Iterate multiple times to stabilize contacts
+    solver_iterations = 8
+    for _ in range(solver_iterations):
+        for a, b in pairs:
+            collided, normal, penetration = check_collision(a, b)
+            if collided:
+                resolve_collision(a, b, normal, penetration)

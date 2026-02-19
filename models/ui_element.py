@@ -67,6 +67,9 @@ class simple_UI:
         self.text_surf = self.font.render(self.text, True, (0, 0, 0))
         self.text_rect = self.text_surf.get_rect(center=self.ui_rect.center)
 
+    def execute_command(self): # add it to any ui element and put ur code
+        pass
+
     def on_render(self):
         """
         Called every frame from the screen's draw loop.
@@ -92,11 +95,8 @@ class simple_UI:
             self.ui = base_ui
             self.ui_rect = self.ui.get_rect(center=(self.x, self.y))
 
-        # 3. Check for click event
-        if is_hovering and self.screen.input.getKeyDown('mouse1'):
-            # Execute the command if it exists
-            if self.command:
-                self.command()
+        # 3. Check for event
+        self.execute_command()
 
     def add_script(self, script):
         if (script.hasUpdate):
@@ -167,3 +167,20 @@ class Button(simple_UI):
         super().__init__(_dict, py_img)
         # The get_aabb from simple_UI is sufficient.
         # No need to override it.
+
+    def execute_command(self):
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovering = self.ui_rect.collidepoint(mouse_pos)
+
+        # 1. Select Base Image (Normal vs Hover)
+        if is_hovering and self.hover_ui:
+            base_ui = self.hover_ui
+        else:
+            base_ui = self.original_ui
+
+
+        # 2. Check for click event
+        if is_hovering and self.screen.input.getKeyDown('mouse1'):
+            # Execute the command if it exists
+            if self.command:
+                self.command()

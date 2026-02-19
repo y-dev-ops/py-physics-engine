@@ -96,15 +96,16 @@ def inspector(screen): # here you add every Shape you need in your screen
 
     # --- UI ---
     button = screen.add_button(pack_ui(
-        position=[100, 50],
-        size=[150, 50],
+        position=[50, 50],
+        size=[75, 75],
         text='Quit',
         font_size=24,
         command=lambda: setattr(screen, 'running', False),
         hover_color=(200, 200, 200), # Light grey on hover
         scripts=[
-            rotate()
-        ]
+            #rotate()
+        ],
+        texture='assets/default/UI/circle.png'
     ))
 
     # --- scene objects ---
@@ -144,7 +145,8 @@ def inspector(screen): # here you add every Shape you need in your screen
         mass=10,
         isStatic=False,
         scripts=[
-            drag()
+            drag(),
+            rotate()
         ],
         outline=outline
     ))
@@ -196,7 +198,7 @@ def inspector(screen): # here you add every Shape you need in your screen
         }
     ))
 
-    #for i in range(20): #20 kills it
+    #for i in range(20): #20 kills it # fixed
     i=1
     rect_7 = screen.add_rectangle(pack_var(
         position=[10 *(i +100), 300],
@@ -262,11 +264,13 @@ main() # calling main func to activate everything
 # added outline
 #added destroy item when right click: check drag()
 #added assets folder, the idea is where you store textures or data, will be there
+# switch to pygame for better and fast render
+# a way to connect scripts with each other like self.shape.getcomponent or script
 
 # TO DO next:
 #idk im too fast
-# switch to pygame for better and fast render
-# a way to connect scripts with each other like self.shape.getcomponent or script
+
+
 # add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
 # add more natural objects lie hex and stuff like that
 # add costume poly shape
