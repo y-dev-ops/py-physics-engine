@@ -25,7 +25,6 @@ class Shape:
         'scripts': [],
         'scripts_update': [],
         'scripts_fixed_update': [],
-        'canvas_id': None,
     }
     def unpack(self, _dict):
         for key, value in _dict.items():
@@ -64,7 +63,7 @@ class Shape:
 
 
         # Cache the inverse for faster math later
-        print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
+        #print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
         shape.rb.inv_inertia = 1.0 / shape.rb.inertia if shape.rb.inertia > 0 else 0
     
 
@@ -77,10 +76,6 @@ class Shape:
         self.calculate_inertia(self)
 
     def destroy(self):
-        # 1. Remove from Tkinter Canvas
-        if self.canvas_id is not None:
-            self.screen.canvas.delete(self.canvas_id)
-            self.canvas_id = None
         
         # 2. Tell the screen/manager to forget about us
         # This removes it from the list the physics engine uses
@@ -181,9 +176,6 @@ class Circle(Shape):
     def position(self, x, y):
         self.x = x
         self.y = y
-        # For a circle, position update is just moving the oval's bounding box.
-        if self.canvas_id is not None:
-            self.screen.canvas.coords(self.canvas_id, self.x - self.radius, self.y - self.radius, self.x + self.radius, self.y + self.radius)
         
 
 class Rectangle(Shape):
@@ -223,8 +215,6 @@ class Rectangle(Shape):
             out.append(ry + cy)
 
         self.points = out
-        if self.canvas_id is not None:
-            self.screen.canvas.coords(self.canvas_id, *self.points)
 
     def position(self, cx, cy):
         # move center only, do NOT rebuild local_points
@@ -287,9 +277,6 @@ class Triangle(Shape):
             out.append(ry + cy)
 
         self.points = out
-        if self.canvas_id is not None:
-            # Note: coords() handles any number of points automatically
-            self.screen.canvas.coords(self.canvas_id, *self.points)
 
     def position(self, cx, cy):
         self.x = cx

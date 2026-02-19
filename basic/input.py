@@ -1,3 +1,5 @@
+import pygame
+
 class Input:
     def __init__(self, screen):
         self.screen = screen
@@ -5,19 +7,20 @@ class Input:
         self.hold_keys = {}
         self.up_keys = {}
 
-    def handle_key_manager(self, event, isUp=False, isMouse=False):
-        # 1. Determine the key string
-        if isMouse:
-            # We map button 1 to 'left_click' to match your script
-            key_name = f'mouse{event.num}'
-        else:
-            key_name = event.keysym
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            self.handle_keydown(pygame.key.name(event.key))
+        elif event.type == pygame.KEYUP:
+            self.handle_keyup(pygame.key.name(event.key))
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.handle_keydown(f'mouse{event.button}')
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.handle_keyup(f'mouse{event.button}')
 
-        # 2. Route to correct internal handler
-        if not isUp:
-            self.handle_keydown(key_name)
-        else:
-            self.handle_keyup(key_name)
+    # Note: 
+    # mouse1 = Left Click
+    # mouse2 = Middle Click
+    # mouse3 = Right Click
 
     def handle_keydown(self, key):
         # Ignore auto-repeat

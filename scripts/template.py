@@ -23,10 +23,10 @@ class Template: # this is a template, you can make your own scripts by copying t
     def start(self):
         pass
 
-    def parent(self, shape): # here we assign the Shape it self to connect the scripts like a tree
-        self.shape = shape
+    def parent(self, obj): # here we assign the Shape it self to connect the scripts like a tree
+        self.obj = obj
         self.start()
 
     def destroyed(self):
-        print(self, 'got destroyed from: ', self.shape)
-        self.shape = None
+        print(self, 'got destroyed from: ', self.obj)
+        self.obj = None

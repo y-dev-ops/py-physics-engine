@@ -5,6 +5,7 @@ from caculations.kinematics import *
 #scripts: (here you add your scripts from '/scripts' to import them)
 from scripts.follow_the_mouse import *
 from scripts.drag import *
+from scripts.rotate import *
 
 
 
@@ -53,13 +54,28 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
 
     return def_dict
 
+def pack_ui(text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
+    def_UI = {
+            'x': position[0],
+            'y': position[1],
+            'width': size[0],
+            'height': size[1],
+            'angle': angle,
+            'color': color,
+            'text': text,
+            'command': command,
+            'texture': texture,
+            'scripts': scripts,
+            'font_size': font_size,
+            'hover_color': hover_color,
+    }
+
+    return def_UI
+
+    pass
+
 def inspector(screen): # here you add every Shape you need in your screen
     
-    
-    # Exit Button
-    button = screen.add_button(text="X", command=screen.root.destroy) # for exit button
-    
-
     # --- phy materials ---
     bouncy_material = {
         'bounciness': 0.8,
@@ -77,6 +93,19 @@ def inspector(screen): # here you add every Shape you need in your screen
         'color': 'white',
         'stroke': 1, # 0 for no outline
     }
+
+    # --- UI ---
+    button = screen.add_button(pack_ui(
+        position=[100, 50],
+        size=[150, 50],
+        text='Quit',
+        font_size=24,
+        command=lambda: setattr(screen, 'running', False),
+        hover_color=(200, 200, 200), # Light grey on hover
+        scripts=[
+            rotate()
+        ]
+    ))
 
     # --- scene objects ---
 
@@ -158,8 +187,8 @@ def inspector(screen): # here you add every Shape you need in your screen
 
     # rect_2 object
     rect_2 = screen.add_rectangle(pack_var(
-        position=[0, 300],
-        size=[400, 80],
+        position=[0, 700],
+        size=[3000, 80],
         color='pink',
         outline={
             'color': 'blue',
@@ -167,13 +196,26 @@ def inspector(screen): # here you add every Shape you need in your screen
         }
     ))
 
+    #for i in range(20): #20 kills it
+    i=1
+    rect_7 = screen.add_rectangle(pack_var(
+        position=[10 *(i +100), 300],
+        size=[50, 50],
+        color='pink',
+        outline={
+            'color': 'blue',
+            'stroke': 5,
+        },
+        isStatic=False
+        ))
+    
+
     # Note: isStatic is True by def
 
 def main(): # main, handling everthing on this project
 
     # --- Manage Screen ---
-    screen = Screen(screen_title, fps=fps, screen_color=screen_color)
-    screen.root.attributes('-fullscreen', is_fullscreen) # fullscreen mode
+    screen = Screen(screen_title, fps=fps, screen_color=screen_color, is_fullscreen=is_fullscreen)
     
     # --- activate inspector ---
     inspector(screen) #passing current screen to inspector
@@ -183,6 +225,7 @@ def main(): # main, handling everthing on this project
         pass
 
     def fixed_update(delta):
+        #pass
         physics_engine(delta, screen.shapes)
 
     screen.register_update(update) # main update
@@ -197,6 +240,14 @@ def main(): # main, handling everthing on this project
         if (len(ss.scripts_fixed_update) > 0):
             screen.register_fixed_update(ss.FUpdate)
 
+    for ui in screen.UI: #foreach shapes update(inside there scripts)
+
+        if (len(ui.scripts_update) > 0):
+            screen.register_update(ui.Update)
+
+        if (len(ui.scripts_fixed_update) > 0):
+            screen.register_fixed_update(ui.FUpdate)
+
     screen.show() #display screen
 
 main() # calling main func to activate everything
@@ -209,7 +260,25 @@ main() # calling main func to activate everything
 #centered Shapes, rathar than using TOP-LEFT system
 # added triangle
 # added outline
-#add destroy item when right click: check drag()
+#added destroy item when right click: check drag()
+#added assets folder, the idea is where you store textures or data, will be there
 
 # TO DO next:
 #idk im too fast
+# switch to pygame for better and fast render
+# a way to connect scripts with each other like self.shape.getcomponent or script
+# add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
+# add more natural objects lie hex and stuff like that
+# add costume poly shape
+# add a scenes 
+# add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
+# fix collistion, make small amount to be zero and grounded, so they stop shaking
+# add gizmo mode, which is normal shapes but dont interact with anything
+# add Ray cast system
+# make a basic doc that cover functions you did
+# opt code, see u after 5 years ;)
+
+#high end step:
+#add a UI for everything as of its an editor fr
+
+#if you finish all of this shit, create a game without changing a single file from the engine script

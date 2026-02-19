@@ -1,89 +1,94 @@
-import tkinter as tk
+import pygame
 from models.shape import *
-import time
+from models.ui_element import *
 import basic.input as inp
 
 
 class Screen:
-    def __init__(self, title="My App", width=400, height=300, fps=60, screen_color = "white"):
-        self.root = tk.Tk()
-        self.root.title(title)
-        self.root.geometry(f"{width}x{height}")
-        self.canvas = tk.Canvas(self.root, bg=screen_color)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+    def __init__(self, title="My App", width=1280, height=720, fps=60, screen_color="white", is_fullscreen=True):
+        # pygame setup
+        pygame.init()
+        self.width = width
+        self.height = height
+        self.screen = pygame.display.set_mode((width, height))
+        pygame.display.set_caption(title)
+        self.font = pygame.font.SysFont("Arial", 40)
         
+        if (is_fullscreen): 
+            pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+
+        self.screen_color = screen_color
+        self.clock = pygame.time.Clock()
+        self.running = True
+
         self.shapes = []  # keep track of shapes
+        self.UI = []
         self.fps = fps
         self.dt = 1/fps
-        self.last_time = time.time()
         self.accumulator = 0
 
         self.update_callbacks = []
         self.fixed_update_callbacks = []
 
-        self.canvas.focus_set()
         #input manager
         self.input = inp.Input(self)
 
-        # 1. Key Press (Default)
-        self.canvas.bind("<KeyPress>", lambda e: self.input.handle_key_manager(e))
 
-        # 2. Key Release
-        self.canvas.bind("<KeyRelease>", lambda e: self.input.handle_key_manager(e, isUp=True))
-
-        # 3. Mouse Down
-        self.canvas.bind("<Button>", lambda e: self.input.handle_key_manager(e, isMouse=True))
-
-        # 4. Mouse Up
-        self.canvas.bind("<ButtonRelease>", lambda e: self.input.handle_key_manager(e, isUp=True, isMouse=True))
-    def get_outline(self, outline):
-        outline_color = outline['color']
-        outline_stroke = outline['stroke']
-        if (outline_stroke == 0):
-            outline_color=None
-            outline_stroke=None
-        return [outline_color, outline_stroke]
+    def add_button(self, _dict):
+        #button = tk.Button(self.root, text=text, command=command, background='red', width=2, height=2)
+        #button.place(relx=1.0, rely=0.0, anchor='ne')
+        original_img = pygame.image.load(_dict['texture']).convert_alpha()
+        py_img = pygame.transform.scale(original_img, (_dict['width'], _dict['height']))
+        _dict['font'] = self.font = pygame.font.SysFont("Arial", _dict['font_size'])
+        _dict['screen'] = self
+        button = Button(_dict, py_img)
+        self.UI.append(button)
+        return button
 
     def add_circle(self,_dict):
         _dict['screen'] = self
         circle = Circle(_dict)
-        outline=self.get_outline(circle.outline)
-        circle.canvas_id = self.canvas.create_oval(
-            circle.x - circle.radius, circle.y - circle.radius, circle.x + circle.radius, circle.y + circle.radius, fill=circle.color, outline=outline[0], width=outline[1]
-        )
         self.shapes.append(circle)
         return circle
 
     def add_rectangle(self, _dict):
         _dict['screen'] = self
         rect = Rectangle(_dict)
-        outline=self.get_outline(rect.outline)
-        rect.canvas_id = self.canvas.create_polygon(
-            rect.points, fill=rect.color, outline=outline[0], width=outline[1]
-        )
         self.shapes.append(rect)
         return rect
 
     def add_triangle(self, _dict):
         _dict['screen'] = self
         tri = Triangle(_dict)
-        outline=self.get_outline(tri.outline)
-        tri.canvas_id = self.canvas.create_polygon(
-            tri.points, fill=tri.color, outline=outline[0], width=outline[1]
-        )
         self.shapes.append(tri)
         return tri
 
+    def draw_shape(self, shape):
+        if shape.type == 'circle':
+            # Draw fill
+            pygame.draw.circle(self.screen, shape.color, (int(shape.x), int(shape.y)), int(shape.radius))
+            # Draw outline
+            if shape.outline.get('stroke', 0) > 0:
+                pygame.draw.circle(self.screen, shape.outline['color'], (int(shape.x), int(shape.y)), int(shape.radius), shape.outline['stroke'])
+        
+        elif shape.type in ['rectangle', 'triangle']:
+            # Convert flat list [x1, y1, x2, y2] to tuples [(x1, y1), (x2, y2)] for Pygame
+            points_tuples = list(zip(shape.points[0::2], shape.points[1::2]))
+            
+            # Draw fill
+            pygame.draw.polygon(self.screen, shape.color, points_tuples)
+            # Draw outline
+            if shape.outline.get('stroke', 0) > 0:
+                pygame.draw.polygon(self.screen, shape.outline['color'], points_tuples, shape.outline['stroke'])
 
-    def add_button(self, text, command):
-        button = tk.Button(self.root, text=text, command=command, background='red', width=2, height=2)
-        button.place(relx=1.0, rely=0.0, anchor='ne')
-        return button
-
+    def draw_ui(self, ui_element):
+        ui_element.on_render() # Update visual state (rotation/hover) first
+        self.screen.blit(ui_element.ui, ui_element.ui_rect)
+        if (ui_element.hasText):
+            self.screen.blit(ui_element.text_surf, ui_element.text_rect)  # Draw text on top
 
     def show(self):
-        self._run_loop()   # start the custom loop
-        self.root.mainloop()
+        self.run()
 
 
     def register_update(self, func): #why are you reading my code >:(   just trust bro aint hacking you
@@ -92,24 +97,39 @@ class Screen:
     def register_fixed_update(self, func):
         self.fixed_update_callbacks.append(func)
 
-    
-    def _run_loop(self):
-        now = time.time()
-        delta = now - self.last_time
-        self.last_time = now
+    def run(self):
+        while (self.running):
+            dt_ms = self.clock.tick(self.fps) 
+            delta = dt_ms / 1000.0
+            
+            # 1. Event Handling
+            self.input.clear_frame_inputs()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                else:
+                    self.input.handle_event(event)
+            
+            # 2. Update Logic
+            for func in self.update_callbacks:
+                func(delta)
 
-        # Call Update callbacks (variable delta)
-        for func in self.update_callbacks:
-            func(delta)
-
-        # Call Fixed_Update callbacks (fixed delta)
-        for func in self.fixed_update_callbacks:
+            # 3. Fixed Update Logic
             self.accumulator += delta
             while self.accumulator >= self.dt:
-                func(self.dt)
+                for func in self.fixed_update_callbacks:
+                    func(self.dt)
                 self.accumulator -= self.dt
 
-        self.input.clear_frame_inputs()
+            # 4. Render
+            self.screen.fill(self.screen_color)
 
-        # Schedule next frame
-        self.root.after(int(1000 / self.fps), self._run_loop)
+            for shape in self.shapes:
+                self.draw_shape(shape)
+
+            for ui_element in self.UI:
+                self.draw_ui(ui_element)
+                
+            pygame.display.flip()
+
+        pygame.quit()
