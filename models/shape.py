@@ -16,7 +16,7 @@ class Shape:
             'gravity': True,
             'isStatic': False,
             'ingore_static': False,
-            'bounciness': 0.6,
+            'bounciness': 0.2,
             'friction': 0.4,
             'static_friction': 0.6,
             'mass': 1000,
@@ -42,6 +42,31 @@ class Shape:
                 if (script.hasFUpdate):
                     self.scripts_fixed_update.append(script)
 
+    def calculate_inertia_poly(self, local_points, mass):
+        # 1. Convert flat list [x1, y1, x2, y2...] to [(x1, y1), (x2, y2)...]
+        vertices = []
+        for i in range(0, len(local_points), 2):
+            vertices.append((local_points[i], local_points[i+1]))
+
+        num = 0.0
+        den = 0.0
+
+        for i in range(len(vertices)):
+            x1, y1 = vertices[i]
+            x2, y2 = vertices[(i + 1) % len(vertices)]
+
+            # Signed area of the triangle formed by the origin and the edge
+            cross_product = x1 * y2 - x2 * y1
+            
+            # Second moment of area contribution
+            sum_squares = (x1**2 + x1*x2 + x2**2 + y1**2 + y1*y2 + y2**2)
+            
+            num += cross_product * sum_squares
+            den += cross_product
+
+        # Final Moment of Inertia
+        return (mass / 6.0) * (num / den)
+
     def calculate_inertia(self, shape):
         if shape.rb.isStatic:
             shape.rb.inertia = 0
@@ -51,19 +76,12 @@ class Shape:
         m = shape.rb.mass
         
         # Formula for Box Inertia: (1/12) * m * (w^2 + h^2)
-        if shape.type == "rectangle":
-            shape.rb.inertia = (1.0 / 12.0) * m * (shape.width**2 + shape.height**2)
+        if shape.type != "circle":
+            shape.rb.inertia = self.calculate_inertia_poly(shape.local_points, m)
         
         # Formula for Circle Inertia: (1/2) * m * r^2
         elif shape.type == "circle":
             shape.rb.inertia = 0.5 * m * (shape.radius**2)
-
-        elif shape.type == "triangle":
-            # Formula for a solid isosceles triangle rotating about its centroid.
-            # Assumes the local_points are set up with the centroid at (0,0).
-            b, h = shape.width, shape.height
-            shape.rb.inertia = m * (b**2 / 24 + h**2 / 18)
-
 
         # Cache the inverse for faster math later
         #print('passed iner for :', shape.type, shape, shape.rb.mass, shape.rb.inertia)
@@ -82,7 +100,6 @@ class Shape:
         data.update(_dict) 
         #print(data)
         self.unpack(data)
-        self.calculate_inertia(self)
 
     def destroy(self):
         
@@ -172,8 +189,9 @@ class Circle(Shape):
     def __init__(self, _dict):
         _dict['type'] = 'circle'
         super().__init__(_dict)
-        # Circles don't need points for drawing with create_oval, but the attribute should exist.
         self.points = []
+        #always after point
+        self.calculate_inertia(self)
 
     def get_aabb(self):
         return(
@@ -192,21 +210,18 @@ class Rectangle(Shape):
     def __init__(self, _dict):
         _dict['type'] = 'rectangle'
         super().__init__(_dict)
-
         hw, hh = self.width / 2.0, self.height / 2.0
-
-        # local_points are fixed in local (centered) coordinates
         self.local_points = [
             -hw, -hh,
              hw, -hh,
              hw,  hh,
             -hw,  hh
         ]
-
-        # world points will be computed each frame
         self.points = [0.0]*8
-        # ensure x,y are centers; your constructor previously did x += hw etc.
-        # assume self.x,self.y already are center from unpack
+        #always after point
+        self.calculate_inertia(self)
+
+
         self.angle = getattr(self, "angle", 0.0)  # degrees
         self.update_world_points()
 
@@ -242,12 +257,6 @@ class Triangle(Shape):
 
         b = self.width
         h = self.height
-
-        # To rotate naturally, (0,0) must be the Centroid.
-        # Centroid is at h/3 from the base.
-        # Vertex 1 (Top):    (0, -2h/3)
-        # Vertex 2 (Bottom-L): (-b/2, h/3)
-        # Vertex 3 (Bottom-R): (b/2, h/3)
         
         self.local_points = [
              0,      -2 * h / 3.0,
@@ -256,6 +265,55 @@ class Triangle(Shape):
         ]
 
         self.points = [0.0] * 6
+
+        #always after point
+        self.calculate_inertia(self)
+
+        self.angle = getattr(self, "angle", 0.0)
+        self.update_world_points()
+
+    def update_world_points(self):
+        cx, cy = self.x, self.y
+
+        out = []
+        lp = self.local_points
+        for i in range(0, len(lp), 2):
+            vec = pygame.math.Vector2(lp[i], lp[i+1]).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
+
+        self.points = out
+
+    def position(self, cx, cy):
+        self.x = cx
+        self.y = cy
+        self.update_world_points()
+
+    def get_aabb(self):
+        xs = self.points[0::2]
+        ys = self.points[1::2]
+        return min(xs), min(ys), max(xs), max(ys)
+
+class Pentagon(Shape):
+    def __init__(self, _dict):
+        _dict['type'] = 'pentagon'
+        super().__init__(_dict)
+
+
+        w = self.width
+        h = self.height
+        self.local_points = [
+             0,          -h / 2.0,       # Top vertex
+             w / 2.0,    -h * 0.1545,    # Upper right
+             w * 0.309,   h / 2.0,       # Lower right
+            -w * 0.309,   h / 2.0,       # Lower left
+            -w / 2.0,    -h * 0.1545     # Upper left
+        ]
+        self.points = [0.0] * 10
+        #always after point
+        self.calculate_inertia(self)
+
+
         self.angle = getattr(self, "angle", 0.0)
         self.update_world_points()
 

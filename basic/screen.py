@@ -63,6 +63,12 @@ class Screen:
         self.shapes.append(tri)
         return tri
 
+    def add_pentagon(self, _dict):
+        _dict['screen'] = self
+        pen = Pentagon(_dict)
+        self.shapes.append(pen)
+        return pen
+
     def draw_shape(self, shape):
         if shape.type == 'circle':
             # Draw fill
@@ -71,7 +77,7 @@ class Screen:
             if shape.outline.get('stroke', 0) > 0:
                 pygame.draw.circle(self.screen, shape.outline['color'], (int(shape.x), int(shape.y)), int(shape.radius), shape.outline['stroke'])
         
-        elif shape.type in ['rectangle', 'triangle']:
+        elif shape.type in ['rectangle', 'triangle', 'pentagon']:
             # Convert flat list [x1, y1, x2, y2] to tuples [(x1, y1), (x2, y2)] for Pygame
             points_tuples = list(zip(shape.points[0::2], shape.points[1::2]))
             

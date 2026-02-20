@@ -233,16 +233,7 @@ def is_point_inside(x, y, shape):
         dx = x - shape.x
         dy = y - shape.y
         return dx*dx + dy*dy <= shape.radius**2
-    elif shape.type == "rectangle":
-        axes = get_axes(shape.points)
-        for axis in axes:
-            p = x * axis[0] + y * axis[1]
-            min_s, max_s = project(shape.points, axis)
-            # Allow a tiny bit of error
-            if p < min_s - 0.1 or p > max_s + 0.1:
-                return False
-        return True
-    elif shape.type == "triangle":
+    elif shape.type != "circle":
         axes = get_axes(shape.points)
         for axis in axes:
             p = x * axis[0] + y * axis[1]
@@ -318,7 +309,13 @@ def resolve_collision(a, b, normal, penetration):
     if vel_along_normal > 0: return # Moving apart
 
     # --- 3. Impulse Calculation ---
-    e = min(a.rb.bounciness, b.rb.bounciness)
+    e = max(a.rb.bounciness, b.rb.bounciness)
+    
+    # STABILIZATION: If relative velocity is low (resting contact), don't bounce.
+    # Threshold covers roughly 2-3 frames of gravity (approx 40-50 px/s).
+    if e < 1.0 and abs(vel_along_normal) < 50:
+        e = 0.0
+
     ra_cross_n = ra_x * ny - ra_y * nx
     rb_cross_n = rb_x * ny - rb_y * nx
     
@@ -336,8 +333,16 @@ def resolve_collision(a, b, normal, penetration):
 
     # --- Friction Impulse (Tangential) ---
     tx, ty = -ny, nx
+    
+    ra_cross_t = ra_x * ty - ra_y * tx
+    rb_cross_t = rb_x * ty - rb_y * tx
+    
+    denom_t = inv_mass_a + inv_mass_b + \
+            (ra_cross_t**2 * a.rb.inv_inertia) + \
+            (rb_cross_t**2 * b.rb.inv_inertia)
+
     vt = rel_vel_x * tx + rel_vel_y * ty
-    jt = -vt / denom # Friction impulse magnitude
+    jt = -vt / denom_t # Friction impulse magnitude
     
     mu = (a.rb.friction + b.rb.friction) * 0.5
     

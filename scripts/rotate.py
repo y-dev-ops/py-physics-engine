@@ -19,6 +19,6 @@ class rotate(Template): # i need to imporve the script template copy to be like 
 
     def update(self, delta):
         if (self.obj.screen.input.getKeyHold('mouse1')):
-            self.obj.rotate_by(10)
+            self.obj.rotate_by(50*delta)
             #pygame.transform.rotate(original_btn, self.angle)
         

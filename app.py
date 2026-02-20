@@ -17,7 +17,7 @@ screen_color = "black"
 
 def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}): #here we turn your vars into dict for easy transfer between objects
     def_material = {
-        'bounciness': 0.6,
+        'bounciness': 0.2,
         'friction': 0.4,
         'static_friction': 0.6,
     }
@@ -78,7 +78,7 @@ def inspector(screen): # here you add every Shape you need in your screen
     
     # --- phy materials ---
     bouncy_material = {
-        'bounciness': 0.8,
+        'bounciness': 0.6,
         'friction': 0.2,
         'static_friction': 0.4,
     }
@@ -147,6 +147,18 @@ def inspector(screen): # here you add every Shape you need in your screen
         scripts=[
             drag(),
             rotate()
+        ],
+        outline=outline
+    ))
+    pen = screen.add_pentagon(pack_var(
+        position=[400, 100],
+        size=[150, 150],
+        material=bouncy_material,
+        color='white',
+        mass=20,
+        isStatic=False,
+        scripts=[
+            drag()
         ],
         outline=outline
     ))
