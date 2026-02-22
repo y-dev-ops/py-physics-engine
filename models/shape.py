@@ -11,7 +11,7 @@ class Shape:
         'width': 0,
         'height': 0,
         'angle': 0,
-        'color': 'pink',
+        'color': None,
         'rb': {
             'gravity': True,
             'isStatic': False,
@@ -26,6 +26,7 @@ class Shape:
         'scripts': [],
         'scripts_update': [],
         'scripts_fixed_update': [],
+        'texture_data': None,
     }
     def unpack(self, _dict):
         for key, value in _dict.items():
@@ -41,6 +42,91 @@ class Shape:
                     self.scripts_update.append(script)
                 if (script.hasFUpdate):
                     self.scripts_fixed_update.append(script)
+
+    def load_texture(self, tex_data):
+        print('loaded texture ', tex_data, 'color:', self.color)
+        if (tex_data == None):
+            return
+        try:
+            # 1. Load and prepare texture
+            raw_img = pygame.image.load(tex_data['texture']).convert_alpha()
+            raw_img = pygame.transform.flip(raw_img, tex_data['flip_x'], tex_data['flip_y'])
+            
+            # Calculate texture scale
+            if self.type == 'circle':
+                target_w = int(self.radius * 2 * tex_data['size'][0])
+                target_h = int(self.radius * 2 * tex_data['size'][1])
+            else:
+                target_w = int(self.width * tex_data['size'][0])
+                target_h = int(self.height * tex_data['size'][1])
+            scaled_tex = pygame.transform.scale(raw_img, (target_w, target_h))
+
+            # 2. Calculate Surface Size to ensure (0,0) is exactly in the center
+            # This prevents the texture from drifting away from the collider
+            if self.type == 'circle':
+                max_dist_x = self.radius
+                max_dist_y = self.radius
+            else:
+                xs = self.local_points[0::2]
+                ys = self.local_points[1::2]
+                max_dist_x = max(abs(x) for x in xs)
+                max_dist_y = max(abs(y) for y in ys)
+
+            # Make surface double the max extent so (0,0) is center
+            surf_w = int(max_dist_x * 2) + 4 # +4 for padding
+            surf_h = int(max_dist_y * 2) + 4
+            center_x, center_y = surf_w // 2, surf_h // 2
+
+            # 3. Create a blank transparent surface and draw mask
+            shape_surface = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
+            
+            if self.type == 'circle':
+                pygame.draw.circle(shape_surface, (255, 255, 255, 255), (center_x, center_y), int(self.radius))
+            else:
+                # Offset local points by center_x, center_y
+                local_points = [(x + center_x, y + center_y) for x, y in zip(xs, ys)]
+                pygame.draw.polygon(shape_surface, (255, 255, 255, 255), local_points)
+
+            # 5. Create the tiled/panned texture based on position
+            panned_texture = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+            ox, oy = tex_data.get('position', [0,0])
+            tw, th = scaled_tex.get_size()
+
+            if tw > 0 and th > 0:
+                # Effective offset within the texture dimensions (wraps around)
+                sx, sy = ox % tw, oy % th
+
+                # Main part (bottom-right of source texture)
+                panned_texture.blit(scaled_tex, (0, 0), (sx, sy, tw - sx, th - sy))
+
+                # Right part (from left of source)
+                if sx > 0:
+                    panned_texture.blit(scaled_tex, (tw - sx, 0), (0, sy, sx, th - sy))
+
+                # Bottom part (from top of source)
+                if sy > 0:
+                    panned_texture.blit(scaled_tex, (0, th - sy), (sx, 0, tw - sx, sy))
+
+                # Corner part (from top-left of source)
+                if sx > 0 and sy > 0:
+                    panned_texture.blit(scaled_tex, (tw - sx, th - sy), (0, 0, sx, sy))
+            
+            # 6. Stamp the panned texture onto the shape mask
+            tex_x, tex_y = center_x - (target_w // 2), center_y - (target_h // 2)
+            shape_surface.blit(panned_texture, (tex_x, tex_y), special_flags=pygame.BLEND_RGBA_MULT)
+            
+            # Apply color tint if it's not white
+            if tex_data.get('color', 'white') != 'white':
+                tint = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
+                tint.fill(tex_data['color'])
+                shape_surface.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+            
+            # Save the cleanly cut shape!
+            self.orig_image = shape_surface
+            
+        except Exception as e:
+            print(f"Texture load failed: {e}")
+            self.orig_image = None
 
     def calculate_inertia_poly(self, local_points, mass):
         # 1. Convert flat list [x1, y1, x2, y2...] to [(x1, y1), (x2, y2)...]
@@ -100,6 +186,7 @@ class Shape:
         data.update(_dict) 
         #print(data)
         self.unpack(data)
+        #self.load_texture(_dict['texture_data'])
 
     def destroy(self):
         
@@ -192,6 +279,7 @@ class Circle(Shape):
         self.points = []
         #always after point
         self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
 
     def get_aabb(self):
         return(
@@ -220,6 +308,7 @@ class Rectangle(Shape):
         self.points = [0.0]*8
         #always after point
         self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
 
 
         self.angle = getattr(self, "angle", 0.0)  # degrees
@@ -268,6 +357,7 @@ class Triangle(Shape):
 
         #always after point
         self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
 
         self.angle = getattr(self, "angle", 0.0)
         self.update_world_points()
@@ -312,6 +402,7 @@ class Pentagon(Shape):
         self.points = [0.0] * 10
         #always after point
         self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
 
 
         self.angle = getattr(self, "angle", 0.0)

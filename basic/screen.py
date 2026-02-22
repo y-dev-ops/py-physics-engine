@@ -70,22 +70,34 @@ class Screen:
         return pen
 
     def draw_shape(self, shape):
-        if shape.type == 'circle':
-            # Draw fill
-            pygame.draw.circle(self.screen, shape.color, (int(shape.x), int(shape.y)), int(shape.radius))
-            # Draw outline
-            if shape.outline.get('stroke', 0) > 0:
-                pygame.draw.circle(self.screen, shape.outline['color'], (int(shape.x), int(shape.y)), int(shape.radius), shape.outline['stroke'])
         
-        elif shape.type in ['rectangle', 'triangle', 'pentagon']:
-            # Convert flat list [x1, y1, x2, y2] to tuples [(x1, y1), (x2, y2)] for Pygame
-            points_tuples = list(zip(shape.points[0::2], shape.points[1::2]))
+        # --- 1. TEXTURED SHAPE (The "Unity" way) ---
+        if hasattr(shape, 'orig_image') and shape.orig_image is not None:
+            # Rotate the perfectly masked shape
+            rotated_image = pygame.transform.rotate(shape.orig_image, -shape.angle)
             
-            # Draw fill
-            pygame.draw.polygon(self.screen, shape.color, points_tuples)
-            # Draw outline
-            if shape.outline.get('stroke', 0) > 0:
-                pygame.draw.polygon(self.screen, shape.outline['color'], points_tuples, shape.outline['stroke'])
+            # Find the new center so it rotates perfectly around the middle
+            new_rect = rotated_image.get_rect(center=(shape.x, shape.y))
+            
+            # Draw it! (No offsets needed here anymore, they are baked into orig_image)
+            self.screen.blit(rotated_image, new_rect.topleft)
+
+        # --- 2. NO TEXTURE / BASIC COLOR FALLBACK ---
+        else:
+            if shape.type == 'circle':
+                print ('shape: ', shape)
+                pygame.draw.circle(self.screen, shape.color, (int(shape.x), int(shape.y)), int(shape.radius))
+                
+                if hasattr(shape, 'outline') and shape.outline.get('stroke', 0) > 0:
+                    pygame.draw.circle(self.screen, shape.outline['color'], (int(shape.x), int(shape.y)), int(shape.radius), shape.outline['stroke'])
+            
+            elif shape.type != 'circle':
+                points_tuples = list(zip(shape.points[0::2], shape.points[1::2]))
+                
+                pygame.draw.polygon(self.screen, shape.color, points_tuples)
+                
+                if hasattr(shape, 'outline') and shape.outline.get('stroke', 0) > 0:
+                    pygame.draw.polygon(self.screen, shape.outline['color'], points_tuples, shape.outline['stroke'])
 
     def draw_ui(self, ui_element):
         ui_element.on_render() # Update visual state (rotation/hover) first

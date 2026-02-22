@@ -15,7 +15,7 @@ is_fullscreen = True
 fps = 60
 screen_color = "black"
 
-def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}): #here we turn your vars into dict for easy transfer between objects
+def pack_var(position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None): #here we turn your vars into dict for easy transfer between objects
     def_material = {
         'bounciness': 0.2,
         'friction': 0.4,
@@ -25,15 +25,31 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
         'color': 'black',
         'stroke': 1, # 0 for no outline
     }
+    if (texture_data == None and color == None):
+        color = 'red'
+
+    elif (texture_data != None and color != None):
+        texture_data['color'] = color
+
+    def_texture_data = {
+        'texture':'assets/default/UI/sqaure.png', # texture file path
+        'flip_x':False, # flip on x axis
+        'flip_y':False,# flip on y axis
+        'color':  'white',# gets applied on top of texture #white for normal
+        'size': [1, 1], #x and y stretch or stuff, def [1,1]
+        'position': [0,0], #position on texture space, def [0, 0]
+    }
 
     def_material.update(material) 
     def_outline.update(outline)
+    if (texture_data != None):
+        def_texture_data.update(texture_data)
     
     def_dict = {
         'x': position[0],
         'y': position[1],
         'angle': angle, 
-        'color': color,
+        'color': color, # red or else
         'rb': {
             'gravity': gravity,
             'isStatic': isStatic,
@@ -51,6 +67,9 @@ def pack_var(position = [0,0], size=[50, 50], color='red', angle=0, material={},
         def_dict['height'] = size[1]
     else:
         def_dict['radius'] = size[0]
+
+    if (texture_data != None):
+        def_dict['texture_data'] = def_texture_data
 
     return def_dict
 
@@ -94,6 +113,16 @@ def inspector(screen): # here you add every Shape you need in your screen
         'stroke': 1, # 0 for no outline
     }
 
+    # --- texture data ---
+    texture_data = {
+        'texture':'assets/default/UI/test.jpg', # texture file path
+        'flip_x':False, # flip on x axis
+        'flip_y':False,# flip on y axis
+        'color':  'white',# can be override by color from shape
+        'size': [1, 1], #x and y stretch or stuff, def [1,1]
+        'position': [10,20], #position on texture space, def [0, 0]
+    }
+
     # --- UI ---
     button = screen.add_button(pack_ui(
         position=[50, 50],
@@ -115,12 +144,14 @@ def inspector(screen): # here you add every Shape you need in your screen
         position=[150, 100],
         size=[50],
         material=bouncy_material,
+        color='red',
         mass=3,
         isStatic=False,
         scripts=[
             drag()
         ],
-        outline=outline
+        outline=outline,
+        texture_data=texture_data
     ))
 
     # rect_3 object
@@ -133,7 +164,8 @@ def inspector(screen): # here you add every Shape you need in your screen
         scripts=[
             drag()
         ],
-        outline=outline
+        outline=outline,
+        texture_data=texture_data
     ))
 
     # tri object
@@ -141,26 +173,28 @@ def inspector(screen): # here you add every Shape you need in your screen
         position=[400, 100],
         size=[150, 150],
         material=spongy_material,
-        color='grey',
+        color='blue',
         mass=10,
         isStatic=False,
         scripts=[
             drag(),
             rotate()
         ],
-        outline=outline
+        outline=outline,
+        texture_data=texture_data
     ))
     pen = screen.add_pentagon(pack_var(
         position=[400, 100],
         size=[150, 150],
         material=bouncy_material,
-        color='white',
+        color='yellow',
         mass=20,
         isStatic=False,
         scripts=[
             drag()
         ],
-        outline=outline
+        outline=outline,
+        texture_data=texture_data
     ))
 
     # rect_5 object
@@ -278,13 +312,13 @@ main() # calling main func to activate everything
 #added assets folder, the idea is where you store textures or data, will be there
 # switch to pygame for better and fast render
 # a way to connect scripts with each other like self.shape.getcomponent or script
+# add more natural objects lie hex and stuff like that
 
 # TO DO next:
 #idk im too fast
 
 
 # add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
-# add more natural objects lie hex and stuff like that
 # add costume poly shape
 # add a scenes 
 # add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
