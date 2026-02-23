@@ -429,3 +429,110 @@ class Pentagon(Shape):
         xs = self.points[0::2]
         ys = self.points[1::2]
         return min(xs), min(ys), max(xs), max(ys)
+
+class Hexagon(Shape):
+    def __init__(self, _dict):
+        _dict['type'] = 'hexagon'
+        super().__init__(_dict)
+
+
+        R = self.width / 2.0
+        h_offset = R * 0.866 # This is (sqrt(3)/2) * R
+
+        self.local_points = [
+            R, 0,                # Right point
+            R * 0.5, h_offset,   # Top Right
+            -R * 0.5, h_offset,  # Top Left
+            -R, 0,               # Left point
+            -R * 0.5, -h_offset, # Bottom Left
+            R * 0.5, -h_offset   # Bottom Right
+        ]
+        self.points = [0.0] * 12
+        #always after point
+        self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
+
+
+        self.angle = getattr(self, "angle", 0.0)
+        self.update_world_points()
+
+    def update_world_points(self):
+        cx, cy = self.x, self.y
+
+        out = []
+        lp = self.local_points
+        for i in range(0, len(lp), 2):
+            vec = pygame.math.Vector2(lp[i], lp[i+1]).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
+
+        self.points = out
+
+    def position(self, cx, cy):
+        self.x = cx
+        self.y = cy
+        self.update_world_points()
+
+    def get_aabb(self):
+        xs = self.points[0::2]
+        ys = self.points[1::2]
+        return min(xs), min(ys), max(xs), max(ys)
+
+class Custom_Poly(Shape):
+    def __init__(self, _dict):
+        _dict['type'] = 'poly'
+        super().__init__(_dict)
+        b = self.width
+        h = self.height
+        #points = [(1, 2), (2, 5)] # [(x1, y1), (x2, y2)...]
+        if (_dict['input_points'] == None):
+            raw_points = [(0, -2 * h / 3.0), (-b / 2.0, h / 3.0), (b / 2.0, h / 3.0)]
+        else:
+            raw_points = _dict.get('input_points')
+        
+
+        # 1. Flatten the local points and ensure they are relative to (0,0)
+        # If your input is [(x,y), (x,y)], we turn it into [x, y, x, y]
+        # Calculate half-dimensions for scaling
+        hw = self.width / 2.0
+        hh = self.height / 2.0
+
+        # 1. Scale the points based on Width and Height
+        self.local_points = []
+        for px, py in raw_points:
+            # Scale the point and add to local_points list
+            self.local_points.append(px * hw)
+            self.local_points.append(py * hh)
+
+
+        # 2. Initialize world points
+        self.points = [0.0] * len(self.local_points)
+        #always after point
+        self.calculate_inertia(self)
+        self.load_texture(_dict.get('texture_data'))
+
+
+        self.angle = getattr(self, "angle", 0.0)
+        self.update_world_points()
+
+    def update_world_points(self):
+        cx, cy = self.x, self.y
+
+        out = []
+        lp = self.local_points
+        for i in range(0, len(lp), 2):
+            vec = pygame.math.Vector2(lp[i], lp[i+1]).rotate(self.angle)
+            out.append(vec.x + cx)
+            out.append(vec.y + cy)
+
+        self.points = out
+
+    def position(self, cx, cy):
+        self.x = cx
+        self.y = cy
+        self.update_world_points()
+
+    def get_aabb(self):
+        xs = self.points[0::2]
+        ys = self.points[1::2]
+        return min(xs), min(ys), max(xs), max(ys)

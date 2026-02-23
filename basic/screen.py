@@ -29,14 +29,11 @@ class Screen:
 
         self.update_callbacks = []
         self.fixed_update_callbacks = []
-
         #input manager
         self.input = inp.Input(self)
 
 
     def add_button(self, _dict):
-        #button = tk.Button(self.root, text=text, command=command, background='red', width=2, height=2)
-        #button.place(relx=1.0, rely=0.0, anchor='ne')
         original_img = pygame.image.load(_dict['texture']).convert_alpha()
         py_img = pygame.transform.scale(original_img, (_dict['width'], _dict['height']))
         _dict['font'] = self.font = pygame.font.SysFont("Arial", _dict['font_size'])
@@ -68,10 +65,22 @@ class Screen:
         pen = Pentagon(_dict)
         self.shapes.append(pen)
         return pen
+    
+    def add_hexagon(self, _dict):
+        _dict['screen'] = self
+        hx = Hexagon(_dict)
+        self.shapes.append(hx)
+        return hx
+
+    def add_custom_poly(self, _dict):
+        _dict['screen'] = self
+        pl = Custom_Poly(_dict)
+        self.shapes.append(pl)
+        return pl
 
     def draw_shape(self, shape):
         
-        # --- 1. TEXTURED SHAPE (The "Unity" way) ---
+        # 1) TEXTURED SHAPE
         if hasattr(shape, 'orig_image') and shape.orig_image is not None:
             # Rotate the perfectly masked shape
             rotated_image = pygame.transform.rotate(shape.orig_image, -shape.angle)
@@ -82,7 +91,7 @@ class Screen:
             # Draw it! (No offsets needed here anymore, they are baked into orig_image)
             self.screen.blit(rotated_image, new_rect.topleft)
 
-        # --- 2. NO TEXTURE / BASIC COLOR FALLBACK ---
+        # 2) NO TEXTURE / BASIC COLOR FALLBACK
         else:
             if shape.type == 'circle':
                 print ('shape: ', shape)
@@ -120,7 +129,7 @@ class Screen:
             dt_ms = self.clock.tick(self.fps) 
             delta = dt_ms / 1000.0
             
-            # 1. Event Handling
+            # 1) Event Handling
             self.input.clear_frame_inputs()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -128,18 +137,18 @@ class Screen:
                 else:
                     self.input.handle_event(event)
             
-            # 2. Update Logic
+            # 2) Update Logic
             for func in self.update_callbacks:
                 func(delta)
 
-            # 3. Fixed Update Logic
+            # 3) Fixed Update Logic
             self.accumulator += delta
             while self.accumulator >= self.dt:
                 for func in self.fixed_update_callbacks:
                     func(self.dt)
                 self.accumulator -= self.dt
 
-            # 4. Render
+            # 4) Render
             self.screen.fill(self.screen_color)
 
             for shape in self.shapes:

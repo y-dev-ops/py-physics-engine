@@ -1,39 +1,36 @@
 import math
-# ok im lost here, AI helped a lot in here, i guess phy is non-sense to me when I added rotaion
 pixels_to_meter = 100
 def integrate(shape, delta):
     if shape.rb.isStatic:
         return
 
-    # 1. Linear Movement (Existing)
+    # 1) Linear Movement
     ax = shape.rb.force[0] * pixels_to_meter / shape.rb.mass
     ay = shape.rb.force[1] * pixels_to_meter / shape.rb.mass
     
     shape.rb.velocity[0] += ax * delta
     shape.rb.velocity[1] += ay * delta
 
-    # DAMPING (The "Motor" Fix)
-    # 0.98 means it loses 2% of its spin every frame
+    # 2) DAMPING
     shape.rb.velocity[0] *= 0.99
     shape.rb.velocity[1] *= 0.99
 
-    # --- Angular Integration (ONLY ONCE) ---
+    # 3) Angular Integration
     if not shape.rb.isStatic and shape.rb.inv_inertia > 0:
         alpha = shape.rb.torque * shape.rb.inv_inertia
         shape.rb.angular_velocity += alpha * delta
-        shape.rb.angular_velocity *= 0.95 # Apply angular damping here
+        shape.rb.angular_velocity *= 0.95 # angular damping
 
         angle_delta_rad = shape.rb.angular_velocity * delta
         shape.angle += math.degrees(angle_delta_rad)
 
-    # --- Update Position and Visuals ---
-    # This must happen AFTER angular changes so the rotation is applied correctly.
+    # 4) Update Position and Visuals
     new_x = shape.x + shape.rb.velocity[0] * delta
     new_y = shape.y + shape.rb.velocity[1] * delta
-    shape.position(new_x, new_y) # This updates center and calls update_world_points()
+    shape.position(new_x, new_y)
 
 
-    # Reset Forces
+    # 5) Reset Forces
     shape.rb.force = [0,0]
     shape.rb.torque = 0
 
@@ -45,14 +42,11 @@ def cal_gravity(shape, g=9.8):
     #F=mg
     shape.rb.apply_force([0, shape.rb.mass * g])
 
-
-
-
-# --- trying to do SAT ----
+# --- SAT ----
 
 def get_axes(points):
     axes = []
-    # Check ALL edges, not just the first two
+    # Check ALL edges
     for i in range(0, len(points), 2): 
         x1, y1 = points[i], points[i+1]
         x2, y2 = points[(i+2) % len(points)], points[(i+3) % len(points)]
@@ -65,7 +59,7 @@ def get_axes(points):
     return axes
 
 def project(points, axis):
-    #Project points onto axis and return (min, max).
+    #Project points into axis and return (min, max).
     dots = [points[i] * axis[0] + points[i+1] * axis[1] for i in range(0, len(points), 2)]
     return min(dots), max(dots)
 
@@ -99,10 +93,7 @@ def sat_collision(a, b):
 
     return True, smallest_axis, min_overlap
 
-
-# fixed, added rotation and some shit, to do next: add ang vel :(
-
-CELL_SIZE = 100  # pixels
+CELL_SIZE = 100  # in pixels
 
 def build_spatial_grid(shapes):
     grid = {}
@@ -117,13 +108,11 @@ def build_spatial_grid(shapes):
 
     return grid
 
-
-#Circle-Polygon
 def sat_circle_poly(circle, poly):
-    # 1. Edge Normals (standard SAT)
+    # 1) Edge Normals (standard SAT)
     axes = get_axes(poly.points)
     
-    # 2. Closest Vertex Axis
+    # 2) Closest Vertex Axis
     # Find the vertex closest to the circle center
     closest_v = None
     min_dist_sq = float('inf')
@@ -143,11 +132,11 @@ def sat_circle_poly(circle, poly):
     if dist > 0.0001:
         axes.append((dx/dist, dy/dist))
     else:
-        # If center is exactly on vertex, pick an arbitrary axis (e.g., vertex normal)
+        # If center is exactly on vertex, pick an arbitrary axis
         # or just skip to avoid Div/0 error.
         pass
 
-    # 3. SAT Loop
+    # 3) SAT Loop
     min_overlap = float('inf')
     smallest_axis = (0, 0)
 
@@ -172,7 +161,7 @@ def sat_circle_poly(circle, poly):
             min_overlap = overlap
             smallest_axis = axis
 
-    # 4. Enforce Normal Direction: Poly -> Circle
+    # 4) Enforce Normal Direction: Poly to Circle
     # We use the vector from Poly Center to Circle Center
     center_dx = circle.x - poly.x
     center_dy = circle.y - poly.y
@@ -182,10 +171,7 @@ def sat_circle_poly(circle, poly):
 
     return True, smallest_axis, min_overlap
 
-
-#other cond
-
-def circle_circle_collision(a, b): # this was a bool, now it returns full data
+def circle_circle_collision(a, b):
     dx = b.x - a.x
     dy = b.y - a.y
     dist_sq = dx*dx + dy*dy
@@ -250,7 +236,7 @@ def resolve_collision(a, b, normal, penetration):
 
     nx, ny = normal
 
-    # --- 1. Find Contact Point (Manifold Heuristic) ---
+    # 1) Find Contact Point (Manifold Heuristic)
     def get_support_point(shape, nx, ny):
         if shape.type == "circle":
             return shape.x + nx * shape.radius, shape.y + ny * shape.radius
@@ -279,7 +265,7 @@ def resolve_collision(a, b, normal, penetration):
     cp_b = get_support_point(b, -nx, -ny)
     
     # Determine which point is the actual contact (Ledge Fix)
-    # We prefer the point that is physically inside the other shape
+    # prefer the point that is physically inside the other shape
     a_in_b = is_point_inside(cp_a[0], cp_a[1], b)
     b_in_a = is_point_inside(cp_b[0], cp_b[1], a)
     
@@ -296,7 +282,7 @@ def resolve_collision(a, b, normal, penetration):
     ra_x, ra_y = contact_x - a.x, contact_y - a.y
     rb_x, rb_y = contact_x - b.x, contact_y - b.y
 
-    # --- 2. Velocity at Contact Point ---
+    # 2) Velocity at Contact Point
     vap_x = a.rb.velocity[0] - a.rb.angular_velocity * ra_y
     vap_y = a.rb.velocity[1] + a.rb.angular_velocity * ra_x
     vbp_x = b.rb.velocity[0] - b.rb.angular_velocity * rb_y
@@ -308,7 +294,7 @@ def resolve_collision(a, b, normal, penetration):
 
     if vel_along_normal > 0: return # Moving apart
 
-    # --- 3. Impulse Calculation ---
+    # 3) Impulse Calculation
     e = max(a.rb.bounciness, b.rb.bounciness)
     
     # STABILIZATION: If relative velocity is low (resting contact), don't bounce.
@@ -328,10 +314,10 @@ def resolve_collision(a, b, normal, penetration):
 
     j = -(1 + e) * vel_along_normal / denom
 
-    # --- 4. Apply Impulse ---
+    # 4) Apply Impulse
     impulse_x, impulse_y = j * nx, j * ny
 
-    # --- Friction Impulse (Tangential) ---
+    # Friction Impulse (Tangential)
     tx, ty = -ny, nx
     
     ra_cross_t = ra_x * ty - ra_y * tx
@@ -363,8 +349,8 @@ def resolve_collision(a, b, normal, penetration):
         b.rb.velocity[1] += (impulse_y + impulse_ty) * inv_mass_b
         b.rb.angular_velocity += ((rb_x * impulse_y - rb_y * impulse_x) + (rb_x * impulse_ty - rb_y * impulse_tx)) * b.rb.inv_inertia
 
-    # --- 5. Corrected Positional Correction ---
-    percent = 0.2 # Lower this to 0.2 for stability
+    # 5) Corrected Positional Correction
+    percent = 0.2 # 0.2 for stability
     slop = 0.01
     total_inv_mass = inv_mass_a + inv_mass_b
     if total_inv_mass == 0: return
@@ -382,12 +368,12 @@ def resolve_collision(a, b, normal, penetration):
 
 
 def physics_engine(delta, shapes):
-    # 1. Apply forces and integrate positions
+    # 1) Apply forces and integrate positions
     for shape in shapes:
         cal_gravity(shape)
         integrate(shape, delta)
 
-    # 2. Broadphase: Find all potential collision pairs using a spatial grid
+    # 2) Broadphase: Find all potential collision pairs using a spatial grid
     grid = build_spatial_grid(shapes)
     pairs = []
     processed_pairs = set()
@@ -411,7 +397,7 @@ def physics_engine(delta, shapes):
                     pairs.append((a, b))
                     processed_pairs.add(pair_id)
 
-    # 3. Narrowphase & Solver: Iterate multiple times to stabilize contacts
+    # 3) Narrowphase & Solver: Iterate multiple times to stabilize contacts
     solver_iterations = 8
     for _ in range(solver_iterations):
         for a, b in pairs:

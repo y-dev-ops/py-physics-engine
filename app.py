@@ -15,7 +15,7 @@ is_fullscreen = True
 fps = 60
 screen_color = "black"
 
-def pack_var(position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None): #here we turn your vars into dict for easy transfer between objects
+def pack_var(position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None, points=None): #here we turn your vars into dict for easy transfer between objects
     def_material = {
         'bounciness': 0.2,
         'friction': 0.4,
@@ -61,6 +61,7 @@ def pack_var(position = [0,0], size=[50, 50], color=None, angle=0, material={}, 
         },
         'outline': def_outline,
         'scripts': scripts,
+        'input_points': points,
     }
     if len(size) > 1:
         def_dict['width'] = size[0]
@@ -197,6 +198,57 @@ def inspector(screen): # here you add every Shape you need in your screen
         texture_data=texture_data
     ))
 
+    hx = screen.add_hexagon(pack_var(
+        position=[400, 400],
+        size=[150, 150],
+        material=bouncy_material,
+        color='green',
+        mass=3,
+        isStatic=False,
+        scripts=[
+            drag()
+        ],
+        outline=outline,
+    ))
+
+    poly = screen.add_custom_poly(pack_var(
+        position=[400, 400],
+        size=[150, 150],
+        material=bouncy_material,
+        color='green',
+        mass=3,
+        isStatic=False,
+        scripts=[
+            drag()
+        ],
+        outline=outline,
+        texture_data=texture_data,
+        points=[
+            # --- The Trunk (Bottom) ---
+            (-0.2, 1.0), (-0.2, 0.6),   # Bottom left of trunk to base of leaves
+            # --- Left Side Canopy (Jagged) ---
+            (-0.5, 0.6), (-0.3, 0.5), (-0.6, 0.4), (-0.4, 0.3),
+            (-0.7, 0.2), (-0.5, 0.1), (-0.8, 0.0), (-0.6, -0.1),
+            (-0.9, -0.2), (-0.7, -0.3), (-0.8, -0.5), (-0.5, -0.6),
+            (-0.3, -0.8), (-0.1, -0.9),
+            
+            # --- The Top Peak ---
+            (0.0, -1.0), 
+            
+            # --- Right Side Canopy (Jagged) ---
+            (0.1, -0.9), (0.3, -0.8), (0.5, -0.6), (0.8, -0.5),
+            (0.7, -0.3), (0.9, -0.2), (0.6, -0.1), (0.8, 0.0),
+            (0.5, 0.1), (0.7, 0.2), (0.4, 0.3), (0.6, 0.4),
+            (0.3, 0.5), (0.5, 0.6),
+            
+            # --- Back to Trunk ---
+            (0.2, 0.6), (0.2, 1.0),
+            
+            # --- Bottom of Trunk (Closing the shape) ---
+            (0.0, 1.0)
+        ]
+    ))
+
     # rect_5 object
     rect_5 = screen.add_rectangle(pack_var(
         position=[900, 50],
@@ -313,13 +365,12 @@ main() # calling main func to activate everything
 # switch to pygame for better and fast render
 # a way to connect scripts with each other like self.shape.getcomponent or script
 # add more natural objects lie hex and stuff like that
+# add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
+# add costume poly shape
 
 # TO DO next:
 #idk im too fast
 
-
-# add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
-# add costume poly shape
 # add a scenes 
 # add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
 # fix collistion, make small amount to be zero and grounded, so they stop shaking
