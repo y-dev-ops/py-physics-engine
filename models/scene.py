@@ -34,8 +34,9 @@ class Scene:
 
     def fixed_update(self, delta):
         # Physics update
+        phy_shapes = [x for x in self.shapes if not x.rb.ingore_phy] #should update every frame in case he change it anywere on anyscript
         if (self.phy_engine):
-            physics_engine(delta, self.shapes)
+            physics_engine(delta, phy_shapes)
 
         for shape in self.shapes:
             shape.FUpdate(delta)

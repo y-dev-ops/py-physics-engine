@@ -48,13 +48,17 @@ class Screen:
 
 
     def add_button(self, _dict):
-        original_img = pygame.image.load(_dict['texture']).convert_alpha()
-        py_img = pygame.transform.scale(original_img, (_dict['width'], _dict['height']))
         _dict['font'] = self.font = pygame.font.SysFont("Arial", _dict['font_size'])
         _dict['screen'] = self
-        button = Button(_dict, py_img)
+        button = Button(_dict)
         self.app.scene_manager.active_scene.UI.append(button)
         return button
+    def add_text(self, _dict):
+        _dict['font'] = self.font = pygame.font.SysFont("Arial", _dict['font_size'])
+        _dict['screen'] = self
+        text_elem = Text(_dict)
+        self.app.scene_manager.active_scene.UI.append(text_elem)
+        return text_elem
 
     def add_circle(self,_dict):
         _dict['screen'] = self

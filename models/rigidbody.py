@@ -1,5 +1,5 @@
 class rigidbody: # here we handle physics
-    def __init__(self, mass=1.0, velocity=None, angular_velocity=0.0, isStatic=True, friction=0.4, static_friction=0.6, gravity=True, bounciness=0.6, ingore_static=False):# might use dict in future for better transfer and less code
+    def __init__(self, mass=1.0, velocity=None, angular_velocity=0.0, isStatic=True, friction=0.4, static_friction=0.6, gravity=True, bounciness=0.6, ingore_static=False, ingore_phy=False):# might use dict in future for better transfer and less code
         self.mass = mass
         self.velocity = velocity if velocity is not None else [0.0, 0.0]
         self.force = [0, 0] #for x and y
@@ -18,6 +18,7 @@ class rigidbody: # here we handle physics
         self.friction = friction
         self.gravity = gravity
         self.ingore_static = ingore_static
+        self.ingore_phy = ingore_phy
         self.bounciness = bounciness
 
         if (static_friction < friction):

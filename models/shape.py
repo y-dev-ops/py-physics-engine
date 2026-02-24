@@ -20,6 +20,7 @@ class Shape:
             'friction': 0.4,
             'static_friction': 0.6,
             'mass': 1000,
+            'ingore_phy': False,
         },
         'type': '',
         'outline': {},

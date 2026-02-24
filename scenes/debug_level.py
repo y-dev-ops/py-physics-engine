@@ -47,15 +47,15 @@ class debug01(Scene):
 
         # --- UI ---
         button = screen.add_button(pack_ui(
-            position=[50, 50],
+            position=[0, 0],
+            anchor='top-left',
             size=[75, 75],
-            text='Quit',
+            text='<-',
+            color='black',
+            font_color='white',
             font_size=24,
-            command=lambda: setattr(screen, 'running', False),
+            command= screen.app.scene_manager.load_prev_scene,#lambda: setattr(screen, 'running', False),
             hover_color=(200, 200, 200), # Light grey on hover
-            scripts=[
-                #rotate()
-            ],
             texture='assets/default/UI/circle.png'
         ))
 
@@ -85,10 +85,8 @@ class debug01(Scene):
             size=[200, 150],
             material=spongy_material,
             mass=10,
-            isStatic=False,
-            scripts=[
-                drag()
-            ],
+            color='yellow',
+            ingore_phy=True,
             outline=outline,
             texture_data=texture_data
         ))

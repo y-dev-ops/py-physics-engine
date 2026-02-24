@@ -34,20 +34,40 @@ class simple_UI:
                 if (script.hasFUpdate):
                     self.scripts_fixed_update.append(script)
 
-    def __init__(self, _dict, py_img):
+    def __init__(self, _dict):
         data = self.def_dict.copy()
         data.update(_dict) 
         self.unpack(data)
+        #effect x and y based on anchor
+        if (self.anchor == 'center'):
+            self.x = (self.screen.width / 2) - self.x
+            self.y = (self.screen.height / 2) - self.y
+        elif (self.anchor == 'top-left'):
+            self.x += self.width
+            self.y += self.height
+        else:
+            pass
+
+        #check for type to ingore whats not needed
+        if (self.type == "text"):
+            return
 
         # Image and Rect setup
-        self.original_ui = py_img
-        self.ui = self.original_ui.copy()  # The image to be drawn
+        # Apply color tint if it's not white
+        self.original_ui = self.py_img.copy()
+        
+        if self.color != 'white':
+            tint = pygame.Surface(self.original_ui.get_size(), pygame.SRCALPHA)
+            tint.fill(self.color)
+            self.original_ui.blit(tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+        self.ui = self.original_ui
         self.ui_rect = self.ui.get_rect(center=(self.x, self.y))
 
         # Create a tinted hover image if a color is provided
         self.hover_ui = None
         if self.hover_color:
-            self.hover_ui = self.original_ui.copy()
+            self.hover_ui = self.py_img.copy()
             # Create a colorized surface and blend it
             color_surface = pygame.Surface(self.hover_ui.get_size(), pygame.SRCALPHA)
             color_surface.fill(self.hover_color)
@@ -64,7 +84,7 @@ class simple_UI:
         if not self.hasText or not self.font:
             return
         # Render text with a black color
-        self.text_surf = self.font.render(self.text, True, (0, 0, 0))
+        self.text_surf = self.font.render(self.text, True, self.font_color)
         self.text_rect = self.text_surf.get_rect(center=self.ui_rect.center)
 
     def execute_command(self): # add it to any ui element and put ur code
@@ -162,9 +182,11 @@ class simple_UI:
     
 # you can add your own UI here
 class Button(simple_UI):
-    def __init__(self, _dict, py_img):
+    def __init__(self, _dict):
         _dict['type'] = 'button'
-        super().__init__(_dict, py_img)
+        original_img = pygame.image.load(_dict['texture']).convert_alpha()
+        self.py_img = pygame.transform.scale(original_img, (_dict['width'], _dict['height']))
+        super().__init__(_dict)
         # The get_aabb from simple_UI is sufficient.
         # No need to override it.
 
@@ -182,5 +204,36 @@ class Button(simple_UI):
         # 2. Check for click event
         if is_hovering and self.screen.input.getKeyDown('mouse1'):
             # Execute the command if it exists
+            if self.command:
+                self.command()
+
+class Text(simple_UI):
+    def __init__(self, _dict):
+        _dict['type'] = 'text'
+        super().__init__(_dict)
+
+        # Render the text surface
+        if self.font:
+            self.original_ui = self.font.render(self.text, True, self.font_color)
+        else:
+            self.original_ui = pygame.Surface((1, 1), pygame.SRCALPHA)
+
+        # Create hover surface if needed
+        self.hover_ui = None
+        if self.hover_color and self.font:
+            self.hover_ui = self.font.render(self.text, True, self.hover_color)
+
+        self.ui = self.original_ui
+        self.ui_rect = self.ui.get_rect(center=(self.x, self.y))
+        
+        # Disable overlay text since this object IS the text
+        self.hasText = False
+
+    def execute_command(self):
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovering = self.ui_rect.collidepoint(mouse_pos)
+
+        # Check for click event
+        if is_hovering and self.screen.input.getKeyDown('mouse1'):
             if self.command:
                 self.command()

@@ -6,6 +6,7 @@ from basic.scene_manager import SceneManager
 # Import your scenes
 from scenes.debug_level import debug01
 from scenes.level_0 import Level01
+from scenes.menu import MainMenu
 
 #scripts: (here you add your scripts from '/scripts' to import them)
 from scripts.follow_the_mouse import *
@@ -14,7 +15,7 @@ from scripts.rotate import *
 
 class App():
 
-    def pack_var(self, position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None, points=None): #here we turn your vars into dict for easy transfer between objects
+    def pack_var(self, position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None, points=None, ingore_phy = False): #here we turn your vars into dict for easy transfer between objects
         def_material = {
             'bounciness': 0.2,
             'friction': 0.4,
@@ -57,6 +58,7 @@ class App():
                 'friction': def_material['friction'],
                 'static_friction': def_material['static_friction'],
                 'mass': mass,
+                'ingore_phy': ingore_phy,
             },
             'outline': def_outline,
             'scripts': scripts,
@@ -73,10 +75,11 @@ class App():
 
         return def_dict
 
-    def pack_ui(self, text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
+    def pack_ui(self, text="simple ui", command=None, position=[0,0], anchor='center', size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/square.png", font_size=16, hover_color=None, font_color='black'):
         def_UI = {
                 'x': position[0],
                 'y': position[1],
+                'anchor': anchor,
                 'width': size[0],
                 'height': size[1],
                 'angle': angle,
@@ -87,6 +90,7 @@ class App():
                 'scripts': scripts,
                 'font_size': font_size,
                 'hover_color': hover_color,
+                'font_color': font_color,
         }
 
         return def_UI
@@ -110,8 +114,9 @@ class App():
         self.scene_manager = SceneManager(self) # pass 'self' so scenes can access app features
 
         # Setup Unity-style "Build Settings"
-        self.scene_manager.add_to_build(debug01) # Index 0
-        self.scene_manager.add_to_build(Level01) # Index 1
+        self.scene_manager.add_to_build(MainMenu) # Index 0
+        self.scene_manager.add_to_build(debug01) # Index 1
+        self.scene_manager.add_to_build(Level01) # Index 2
 
         # Load the first scene!
         self.scene_manager.load_scene(0)
@@ -149,11 +154,12 @@ if __name__ == "__main__":
 # add a scenes 
 # add a Camera System
 # fixed collistion, make small amount to be zero and grounded, so they stop shaking
+# add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
+#progress: make add_image as static object not effecting phy
 
 # TO DO next:
 #idk im too fast
 
-# add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
 # add gizmo mode, which is normal shapes but dont interact with anything
 # add Ray cast system
 # make a basic doc that cover functions you did
