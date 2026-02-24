@@ -16,7 +16,7 @@ class debug01(Scene):
     def elements(self, screen):
 
         pack_var = screen.app.pack_var
-
+        pack_ui = screen.app.pack_ui
         # --- phy materials ---
         bouncy_material = {
             'bounciness': 0.6,
@@ -45,7 +45,19 @@ class debug01(Scene):
             'position': [10,20], #position on texture space, def [0, 0]
         }
 
-
+        # --- UI ---
+        button = screen.add_button(pack_ui(
+            position=[50, 50],
+            size=[75, 75],
+            text='Quit',
+            font_size=24,
+            command=lambda: setattr(screen, 'running', False),
+            hover_color=(200, 200, 200), # Light grey on hover
+            scripts=[
+                #rotate()
+            ],
+            texture='assets/default/UI/circle.png'
+        ))
 
         # --- scene objects ---
 
@@ -63,6 +75,9 @@ class debug01(Scene):
             outline=outline,
             texture_data=texture_data
         ))
+
+        # --- Set Camera Target ---
+        screen.set_camera_target(circle)
 
         # rect_3 object
         rect_3 = screen.add_rectangle(pack_var(
@@ -226,6 +241,7 @@ class debug01(Scene):
         
         # Add a floor
         self.elements(self.screen)
+        self.screen.camera.set_offset([0,0])
         #self.shapes.append(floor)
 
         # Add your giant 40-point tree here!

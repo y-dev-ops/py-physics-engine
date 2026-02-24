@@ -6,6 +6,7 @@ class Level01(Scene):
     def __init__(self, screen):
         super().__init__(screen)
         self.name = "Main Menu / Level 1"
+        self.scene_color = 'black'
 
 
 
@@ -57,6 +58,7 @@ class Level01(Scene):
         
         # Add a floor
         self.elements(self.screen)
+        self.screen.camera.set_offset([0,0])
         #self.shapes.append(floor)
 
         # Add your giant 40-point tree here!

@@ -1,3 +1,5 @@
+import gc
+
 class SceneManager:
     def __init__(self, app):
         self.app = app
@@ -19,15 +21,21 @@ class SceneManager:
         # 1. Unload current scene if it exists
         if self.active_scene is not None:
             self.active_scene.on_unload()
+            
+            # Stop camera from following dead objects
+            self.screen.set_camera_target(None)
+            
+            # Remove callbacks
+            self.screen.remove_update(self.active_scene.update)
+            self.screen.remove_fixed_update(self.active_scene.fixed_update)
+            
+            # Force memory cleanup
+            self.active_scene = None
+            gc.collect()
 
         # 2. Instantiate the new scene from the class
         self.current_index = index
         scene_class = self.build_index[index]
-        # handle update:
-        if (self.active_scene != None):
-            self.screen.remove_update(self.active_scene.update) # main update
-            self.screen.remove_fixed_update(self.active_scene.fixed_update) # main FUpdate
-
         self.active_scene = scene_class(self.app)
 
         if (self.active_scene != None):
@@ -42,3 +50,6 @@ class SceneManager:
     def load_next_scene(self):
         """Helper to go to the next level"""
         self.load_scene(self.current_index + 1)
+    def load_prev_scene(self):
+        """Helper to go to the next level"""
+        self.load_scene(self.current_index - 1)

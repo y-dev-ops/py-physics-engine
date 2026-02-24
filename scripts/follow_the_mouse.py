@@ -11,7 +11,10 @@ class follow_the_mouse(Template): # i need to imporve the script template copy t
         self.obj.rb.ingore_static = True
 
     def update(self, delta): # to avoid def between update and fixed update, we will make it smooth tracking, and we want it to ingore static objects
-        mouse_x, mouse_y = pygame.mouse.get_pos()        
+        mx, my = pygame.mouse.get_pos()
+        
+        # Convert to world coordinates
+        mouse_x, mouse_y = self.obj.screen.camera.screen_to_world(mx, my)
         
         dx = mouse_x - self.obj.x
         dy = mouse_y - self.obj.y

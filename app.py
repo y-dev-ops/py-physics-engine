@@ -73,7 +73,7 @@ class App():
 
         return def_dict
 
-    def pack_ui(text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
+    def pack_ui(self, text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
         def_UI = {
                 'x': position[0],
                 'y': position[1],
@@ -146,13 +146,14 @@ if __name__ == "__main__":
 # add more natural objects lie hex and stuff like that
 # add a texture system for objects and background, and its better to have like unity, were you can chnage texture settings or flip it
 # add costume poly shape
+# add a scenes 
+# add a Camera System
+# fixed collistion, make small amount to be zero and grounded, so they stop shaking
 
 # TO DO next:
 #idk im too fast
 
-# add a scenes 
 # add a way to add static objects that dont need an rb, like tree in background and stuff, a way to add an image to be clear
-# fix collistion, make small amount to be zero and grounded, so they stop shaking
 # add gizmo mode, which is normal shapes but dont interact with anything
 # add Ray cast system
 # make a basic doc that cover functions you did

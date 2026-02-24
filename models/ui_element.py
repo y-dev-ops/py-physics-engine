@@ -146,8 +146,8 @@ class simple_UI:
 
     def destroy(self):
         """Removes the UI element from the screen."""
-        if self.screen and self in self.screen.UI:
-            self.screen.UI.remove(self)
+        if self in self.screen.app.scene_manager.active_scene.UI:
+            self.screen.app.scene_manager.active_scene.UI.remove(self)
 
         if (len(self.scripts) > 0):
             for script in self.scripts:

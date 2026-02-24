@@ -28,7 +28,10 @@ class drag(Template): # i need to imporve the script template copy to be like mo
         return None
 
     def get_mouse_p(self):
-        return pygame.mouse.get_pos()
+        mx, my = pygame.mouse.get_pos()
+        # Convert screen mouse pos to world mouse pos using the camera
+        wx, wy = self.obj.screen.camera.screen_to_world(mx, my)
+        return wx, wy
 
     def mouse_down(self, destroy=False):
 

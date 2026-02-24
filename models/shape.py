@@ -44,7 +44,7 @@ class Shape:
                     self.scripts_fixed_update.append(script)
 
     def load_texture(self, tex_data):
-        print('loaded texture ', tex_data, 'color:', self.color)
+        #print('loaded texture ', tex_data, 'color:', self.color)
         if (tex_data == None):
             return
         try:
