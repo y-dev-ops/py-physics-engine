@@ -5,7 +5,7 @@ import basic.input as inp
 
 
 class Screen:
-    def __init__(self, title="My App", width=1280, height=720, fps=60, screen_color="white", is_fullscreen=True):
+    def __init__(self, app, title="My App", width=1280, height=720, fps=60, screen_color="white", is_fullscreen=True):
         # pygame setup
         pygame.init()
         self.width = width
@@ -21,8 +21,8 @@ class Screen:
         self.clock = pygame.time.Clock()
         self.running = True
 
-        self.shapes = []  # keep track of shapes
-        self.UI = []
+        #self.shapes = []  # keep track of shapes
+        #self.UI = []
         self.fps = fps
         self.dt = 1/fps
         self.accumulator = 0
@@ -31,6 +31,7 @@ class Screen:
         self.fixed_update_callbacks = []
         #input manager
         self.input = inp.Input(self)
+        self.app = app
 
 
     def add_button(self, _dict):
@@ -45,37 +46,37 @@ class Screen:
     def add_circle(self,_dict):
         _dict['screen'] = self
         circle = Circle(_dict)
-        self.shapes.append(circle)
+        self.app.scene_manager.active_scene.shapes.append(circle)
         return circle
 
     def add_rectangle(self, _dict):
         _dict['screen'] = self
         rect = Rectangle(_dict)
-        self.shapes.append(rect)
+        self.app.scene_manager.active_scene.shapes.append(rect)
         return rect
 
     def add_triangle(self, _dict):
         _dict['screen'] = self
         tri = Triangle(_dict)
-        self.shapes.append(tri)
+        self.app.scene_manager.active_scene.shapes.append(tri)
         return tri
 
     def add_pentagon(self, _dict):
         _dict['screen'] = self
         pen = Pentagon(_dict)
-        self.shapes.append(pen)
+        self.app.scene_manager.active_scene.shapes.append(pen)
         return pen
     
     def add_hexagon(self, _dict):
         _dict['screen'] = self
         hx = Hexagon(_dict)
-        self.shapes.append(hx)
+        self.app.scene_manager.active_scene.shapes.append(hx)
         return hx
 
     def add_custom_poly(self, _dict):
         _dict['screen'] = self
         pl = Custom_Poly(_dict)
-        self.shapes.append(pl)
+        self.app.scene_manager.active_scene.shapes.append(pl)
         return pl
 
     def draw_shape(self, shape):
@@ -123,6 +124,11 @@ class Screen:
 
     def register_fixed_update(self, func):
         self.fixed_update_callbacks.append(func)
+    
+    def remove_update(self, func):
+        self.update_callbacks.remove(func)
+    def remove_fixed_update(self, func):
+        self.fixed_update_callbacks.remove(func)
 
     def run(self):
         while (self.running):
@@ -136,6 +142,10 @@ class Screen:
                     self.running = False
                 else:
                     self.input.handle_event(event)
+                
+                # Check for scene switch inside the event loop
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                    self.app.scene_manager.load_next_scene()
             
             # 2) Update Logic
             for func in self.update_callbacks:
@@ -150,12 +160,16 @@ class Screen:
 
             # 4) Render
             self.screen.fill(self.screen_color)
+            if self.app.scene_manager.active_scene:
+                for shape in self.app.scene_manager.active_scene.shapes:
+                    self.draw_shape(shape)
+            
+            #handle update in scene
 
-            for shape in self.shapes:
-                self.draw_shape(shape)
 
-            for ui_element in self.UI:
-                self.draw_ui(ui_element)
+            #for ui_element in self.UI:
+                #self.draw_ui(ui_element)
+
                 
             pygame.display.flip()
 

@@ -1,356 +1,135 @@
 from basic.screen import *
 from caculations.kinematics import *
+import pygame
+from basic.scene_manager import SceneManager
 
+# Import your scenes
+from scenes.debug_level import debug01
+from scenes.level_0 import Level01
 
 #scripts: (here you add your scripts from '/scripts' to import them)
 from scripts.follow_the_mouse import *
 from scripts.drag import *
 from scripts.rotate import *
 
+class App():
 
+    def pack_var(self, position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None, points=None): #here we turn your vars into dict for easy transfer between objects
+        def_material = {
+            'bounciness': 0.2,
+            'friction': 0.4,
+            'static_friction': 0.6,
+        }
+        def_outline = {
+            'color': 'black',
+            'stroke': 1, # 0 for no outline
+        }
+        if (texture_data == None and color == None):
+            color = 'red'
 
-#--- Settings ---
-screen_title = "phy engine"
-is_fullscreen = True
-fps = 60
-screen_color = "black"
+        elif (texture_data != None and color != None):
+            texture_data['color'] = color
 
-def pack_var(position = [0,0], size=[50, 50], color=None, angle=0, material={}, mass=1, ingore_static = False, gravity=True, isStatic=True, scripts=[], outline={}, texture_data=None, points=None): #here we turn your vars into dict for easy transfer between objects
-    def_material = {
-        'bounciness': 0.2,
-        'friction': 0.4,
-        'static_friction': 0.6,
-    }
-    def_outline = {
-        'color': 'black',
-        'stroke': 1, # 0 for no outline
-    }
-    if (texture_data == None and color == None):
-        color = 'red'
+        def_texture_data = {
+            'texture':'assets/default/UI/sqaure.png', # texture file path
+            'flip_x':False, # flip on x axis
+            'flip_y':False,# flip on y axis
+            'color':  'white',# gets applied on top of texture #white for normal
+            'size': [1, 1], #x and y stretch or stuff, def [1,1]
+            'position': [0,0], #position on texture space, def [0, 0]
+        }
 
-    elif (texture_data != None and color != None):
-        texture_data['color'] = color
-
-    def_texture_data = {
-        'texture':'assets/default/UI/sqaure.png', # texture file path
-        'flip_x':False, # flip on x axis
-        'flip_y':False,# flip on y axis
-        'color':  'white',# gets applied on top of texture #white for normal
-        'size': [1, 1], #x and y stretch or stuff, def [1,1]
-        'position': [0,0], #position on texture space, def [0, 0]
-    }
-
-    def_material.update(material) 
-    def_outline.update(outline)
-    if (texture_data != None):
-        def_texture_data.update(texture_data)
-    
-    def_dict = {
-        'x': position[0],
-        'y': position[1],
-        'angle': angle, 
-        'color': color, # red or else
-        'rb': {
-            'gravity': gravity,
-            'isStatic': isStatic,
-            'ingore_static': ingore_static,
-            'bounciness': def_material['bounciness'],
-            'friction': def_material['friction'],
-            'static_friction': def_material['static_friction'],
-            'mass': mass,
-        },
-        'outline': def_outline,
-        'scripts': scripts,
-        'input_points': points,
-    }
-    if len(size) > 1:
-        def_dict['width'] = size[0]
-        def_dict['height'] = size[1]
-    else:
-        def_dict['radius'] = size[0]
-
-    if (texture_data != None):
-        def_dict['texture_data'] = def_texture_data
-
-    return def_dict
-
-def pack_ui(text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
-    def_UI = {
+        def_material.update(material) 
+        def_outline.update(outline)
+        if (texture_data != None):
+            def_texture_data.update(texture_data)
+        
+        def_dict = {
             'x': position[0],
             'y': position[1],
-            'width': size[0],
-            'height': size[1],
-            'angle': angle,
-            'color': color,
-            'text': text,
-            'command': command,
-            'texture': texture,
+            'angle': angle, 
+            'color': color, # red or else
+            'rb': {
+                'gravity': gravity,
+                'isStatic': isStatic,
+                'ingore_static': ingore_static,
+                'bounciness': def_material['bounciness'],
+                'friction': def_material['friction'],
+                'static_friction': def_material['static_friction'],
+                'mass': mass,
+            },
+            'outline': def_outline,
             'scripts': scripts,
-            'font_size': font_size,
-            'hover_color': hover_color,
-    }
-
-    return def_UI
-
-    pass
-
-def inspector(screen): # here you add every Shape you need in your screen
-    
-    # --- phy materials ---
-    bouncy_material = {
-        'bounciness': 0.6,
-        'friction': 0.2,
-        'static_friction': 0.4,
-    }
-    spongy_material = {
-        'bounciness': 0.2,
-        'friction': 0.7,
-        'static_friction': 0.8,
-    }
-
-    #--- Outline Settings ---
-    outline = {
-        'color': 'white',
-        'stroke': 1, # 0 for no outline
-    }
-
-    # --- texture data ---
-    texture_data = {
-        'texture':'assets/default/UI/test.jpg', # texture file path
-        'flip_x':False, # flip on x axis
-        'flip_y':False,# flip on y axis
-        'color':  'white',# can be override by color from shape
-        'size': [1, 1], #x and y stretch or stuff, def [1,1]
-        'position': [10,20], #position on texture space, def [0, 0]
-    }
-
-    # --- UI ---
-    button = screen.add_button(pack_ui(
-        position=[50, 50],
-        size=[75, 75],
-        text='Quit',
-        font_size=24,
-        command=lambda: setattr(screen, 'running', False),
-        hover_color=(200, 200, 200), # Light grey on hover
-        scripts=[
-            #rotate()
-        ],
-        texture='assets/default/UI/circle.png'
-    ))
-
-    # --- scene objects ---
-
-    # circle object
-    circle = screen.add_circle(pack_var(
-        position=[150, 100],
-        size=[50],
-        material=bouncy_material,
-        color='red',
-        mass=3,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline,
-        texture_data=texture_data
-    ))
-
-    # rect_3 object
-    rect_3 = screen.add_rectangle(pack_var(
-        position=[600, 100],
-        size=[200, 150],
-        material=spongy_material,
-        mass=10,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline,
-        texture_data=texture_data
-    ))
-
-    # tri object
-    tri = screen.add_triangle(pack_var(
-        position=[400, 100],
-        size=[150, 150],
-        material=spongy_material,
-        color='blue',
-        mass=10,
-        isStatic=False,
-        scripts=[
-            drag(),
-            rotate()
-        ],
-        outline=outline,
-        texture_data=texture_data
-    ))
-    pen = screen.add_pentagon(pack_var(
-        position=[400, 100],
-        size=[150, 150],
-        material=bouncy_material,
-        color='yellow',
-        mass=20,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline,
-        texture_data=texture_data
-    ))
-
-    hx = screen.add_hexagon(pack_var(
-        position=[400, 400],
-        size=[150, 150],
-        material=bouncy_material,
-        color='green',
-        mass=3,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline,
-    ))
-
-    poly = screen.add_custom_poly(pack_var(
-        position=[400, 400],
-        size=[150, 150],
-        material=bouncy_material,
-        color='green',
-        mass=3,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline,
-        texture_data=texture_data,
-        points=[
-            # --- The Trunk (Bottom) ---
-            (-0.2, 1.0), (-0.2, 0.6),   # Bottom left of trunk to base of leaves
-            # --- Left Side Canopy (Jagged) ---
-            (-0.5, 0.6), (-0.3, 0.5), (-0.6, 0.4), (-0.4, 0.3),
-            (-0.7, 0.2), (-0.5, 0.1), (-0.8, 0.0), (-0.6, -0.1),
-            (-0.9, -0.2), (-0.7, -0.3), (-0.8, -0.5), (-0.5, -0.6),
-            (-0.3, -0.8), (-0.1, -0.9),
-            
-            # --- The Top Peak ---
-            (0.0, -1.0), 
-            
-            # --- Right Side Canopy (Jagged) ---
-            (0.1, -0.9), (0.3, -0.8), (0.5, -0.6), (0.8, -0.5),
-            (0.7, -0.3), (0.9, -0.2), (0.6, -0.1), (0.8, 0.0),
-            (0.5, 0.1), (0.7, 0.2), (0.4, 0.3), (0.6, 0.4),
-            (0.3, 0.5), (0.5, 0.6),
-            
-            # --- Back to Trunk ---
-            (0.2, 0.6), (0.2, 1.0),
-            
-            # --- Bottom of Trunk (Closing the shape) ---
-            (0.0, 1.0)
-        ]
-    ))
-
-    # rect_5 object
-    rect_5 = screen.add_rectangle(pack_var(
-        position=[900, 50],
-        size=[50, 50],
-        material=bouncy_material,
-        mass=3,
-        isStatic=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline
-    ))
-    
-    # rect_4 object
-    rect_4 = screen.add_rectangle(pack_var(
-        position=[600, 600],
-        size=[700, 50],
-        color='green',
-        outline=outline
-    ))
-
-    # rect object
-    rect = screen.add_rectangle(pack_var(
-        position=[50, 500],
-        size=[120, 80],
-        color='white',
-        ingore_static=True,
-        isStatic=False,
-        gravity=False,
-        scripts=[
-            drag()
-        ],
-        outline=outline
-    ))
-    #rect.add_script(follow_the_mouse(rect))
-
-    # rect_2 object
-    rect_2 = screen.add_rectangle(pack_var(
-        position=[0, 700],
-        size=[3000, 80],
-        color='pink',
-        outline={
-            'color': 'blue',
-            'stroke': 5,
+            'input_points': points,
         }
-    ))
+        if len(size) > 1:
+            def_dict['width'] = size[0]
+            def_dict['height'] = size[1]
+        else:
+            def_dict['radius'] = size[0]
 
-    #for i in range(20): #20 kills it # fixed
-    i=1
-    rect_7 = screen.add_rectangle(pack_var(
-        position=[10 *(i +100), 300],
-        size=[50, 50],
-        color='pink',
-        outline={
-            'color': 'blue',
-            'stroke': 5,
-        },
-        isStatic=False
-        ))
-    
+        if (texture_data != None):
+            def_dict['texture_data'] = def_texture_data
 
-    # Note: isStatic is True by def
+        return def_dict
 
-def main(): # main, handling everthing on this project
+    def pack_ui(text="simple ui", command=None, position=[0,0], size=[50, 50], scripts=[], angle=0, color='white',texture = "assets/default/UI/sqaure.png", font_size=16, hover_color=None):
+        def_UI = {
+                'x': position[0],
+                'y': position[1],
+                'width': size[0],
+                'height': size[1],
+                'angle': angle,
+                'color': color,
+                'text': text,
+                'command': command,
+                'texture': texture,
+                'scripts': scripts,
+                'font_size': font_size,
+                'hover_color': hover_color,
+        }
 
-    # --- Manage Screen ---
-    screen = Screen(screen_title, fps=fps, screen_color=screen_color, is_fullscreen=is_fullscreen)
-    
-    # --- activate inspector ---
-    inspector(screen) #passing current screen to inspector
+        return def_UI
 
-    # --- main updates ---
-    def update(delta):
         pass
 
-    def fixed_update(delta):
-        #pass
-        physics_engine(delta, screen.shapes)
+    def inspector(screen): # here you add every Shape you need in your screen
+        pass
 
-    screen.register_update(update) # main update
-    screen.register_fixed_update(fixed_update) # main FUpdate
+    def __init__(self): # main, handling everthing on this project
+        # Initialize Scene Manager
+        
+        #--- Settings ---
+        self.screen_title = "phy engine"
+        self.is_fullscreen = True
+        self.fps = 60
+        self.screen_color = "black"
 
-    # --- activate objects update function ---
-    for ss in screen.shapes: #foreach shapes update(inside there scripts)
+        # --- Manage Screen ---
+        self.screen = Screen(self, self.screen_title, fps=self.fps, screen_color=self.screen_color, is_fullscreen=self.is_fullscreen)
+        self.scene_manager = SceneManager(self) # pass 'self' so scenes can access app features
 
-        if (len(ss.scripts_update) > 0):
-            screen.register_update(ss.Update)
+        # Setup Unity-style "Build Settings"
+        self.scene_manager.add_to_build(debug01) # Index 0
+        self.scene_manager.add_to_build(Level01) # Index 1
 
-        if (len(ss.scripts_fixed_update) > 0):
-            screen.register_fixed_update(ss.FUpdate)
+        # Load the first scene!
+        self.scene_manager.load_scene(0)
 
-    for ui in screen.UI: #foreach shapes update(inside there scripts)
+        # --- activate inspector ---
+        #inspector(screen) #passing current screen to inspector
 
-        if (len(ui.scripts_update) > 0):
-            screen.register_update(ui.Update)
 
-        if (len(ui.scripts_fixed_update) > 0):
-            screen.register_fixed_update(ui.FUpdate)
 
-    screen.show() #display screen
 
-main() # calling main func to activate everything
+
+
+        
+        self.screen.show() #display screen
+
+if __name__ == "__main__":
+    App()
+    #main() # calling main func to activate everything
 
 #what i have:
 #change type to poly for better control

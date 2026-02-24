@@ -192,8 +192,8 @@ class Shape:
         
         # 2. Tell the screen/manager to forget about us
         # This removes it from the list the physics engine uses
-        if self in self.screen.shapes:
-            self.screen.shapes.remove(self)
+        if self in self.screen.app.scene_manager.active_scene.shapes:
+            self.screen.app.scene_manager.active_scene.shapes.remove(self)
         if (len(self.scripts) > 0):
             for script in self.scripts:
                 self.remove_script(script, insideLoop=True)
