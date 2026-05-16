@@ -5,7 +5,7 @@
     <a href="https://github.com/y-dev-ops/py-physics-engine/actions/workflows/ci.yml">
       <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status">
     </a>
-    <a href="https://github.com/y-dev-ops/py-physics-engine/blob/main/LICENSE">
+    <a href="https://github.com/y-dev-ops/py-physics-engine/blob/phy-engine/LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
     </a>
     <a href="https://github.com/y-dev-ops/py-physics-engine/pulls">
@@ -90,13 +90,7 @@ Follow these steps to get `py-physics-engine` up and running on your local machi
         source .venv/bin/activate
         ```
 
-4.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-    *(Note: A `requirements.txt` file is assumed for dependency management.)*
-
-5.  **Run the Engine:**
+4.  **Run the Engine:**
     ```bash
     python app.py
     ```
@@ -114,7 +108,7 @@ We welcome contributions to `py-physics-engine`! If you have ideas for improveme
 2.  **Create a new branch** for your feature or fix (`git checkout -b feature/your-feature-name` or `bugfix/your-bug-fix`).
 3.  **Commit your changes** with clear, descriptive messages.
 4.  **Push** your branch to your forked repository.
-5.  **Open a Pull Request** against the `main` branch of this repository.
+5.  **Open a Pull Request** against the `phy-engine` branch of this repository.
 
 Please ensure your code adheres to existing style guidelines and includes relevant tests where applicable.
 
